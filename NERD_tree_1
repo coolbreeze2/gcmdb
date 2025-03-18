@@ -1,0 +1,8 @@
+/home/admin/project/goTool/
+▸ cmdb/
+▾ main/
+    main*
+    main.go
+  go.mod
+  go.sum
+  NERD_tree_1

@@ -10,6 +10,7 @@ const APIVersion string = "v1alpha"
 
 type IResource interface {
 	List()
+	GetKind() string
 }
 
 type ManagedFields struct {
@@ -59,6 +60,10 @@ type Resource struct {
 	Description string     `json:"description"`
 }
 
+func (r *Resource) GetKind() string {
+	return r.Kind
+}
+
 func NewResource(kind string) *Resource {
 	return &Resource{
 		TypeMeta: TypeMeta{
@@ -74,12 +79,12 @@ type ProjectSpec struct {
 }
 
 type Project struct {
-	*Resource
+	Resource
 	Spec ProjectSpec `json:"spec"`
 }
 
 func NewProject() *Project {
 	return &Project{
-		Resource: NewResource("Project"),
+		Resource: *NewResource("Project"),
 	}
 }

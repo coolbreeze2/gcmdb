@@ -8,8 +8,29 @@ import (
 
 const APIVersion string = "v1alpha"
 
+type ListOptions struct {
+	Namespace     string            `json:"namespace"`
+	Page          int64             `json:"page"`
+	Limit         int64             `json:"limit"`
+	Selector      map[string]string `json:"selector"`
+	FieldSelector map[string]string `json:"field_selector"`
+}
+
+func NewListOptions(page int64, limit int64, selector map[string]string, field_selector map[string]string) *ListOptions {
+	obj := &ListOptions{
+		Page:          page,
+		Limit:         limit,
+		Selector:      selector,
+		FieldSelector: field_selector,
+	}
+	if err := defaults.Set(obj); err != nil {
+		panic(err)
+	}
+	return obj
+}
+
 type IResource interface {
-	List()
+	List(opt *ListOptions) []byte
 	GetKind() string
 }
 
@@ -49,13 +70,9 @@ func NewObjectMeta() *ObjectMeta {
 	}
 }
 
-type TypeMeta struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-}
-
 type Resource struct {
-	TypeMeta
+	APIVersion  string     `json:"apiVersion"`
+	Kind        string     `json:"kind"`
 	Metadata    ObjectMeta `json:"metadata"`
 	Description string     `json:"description"`
 }
@@ -66,11 +83,9 @@ func (r *Resource) GetKind() string {
 
 func NewResource(kind string) *Resource {
 	return &Resource{
-		TypeMeta: TypeMeta{
-			APIVersion: APIVersion,
-			Kind:       kind,
-		},
-		Metadata: *NewObjectMeta(),
+		APIVersion: APIVersion,
+		Kind:       kind,
+		Metadata:   *NewObjectMeta(),
 	}
 }
 

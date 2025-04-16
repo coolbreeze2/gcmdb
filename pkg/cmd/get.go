@@ -22,67 +22,101 @@ var getCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(NewCommand(cmdb.NewProject()))
-	rootCmd.AddCommand(getCmd)
+	RootCmd.AddCommand(getCmd)
 }
 
-func NewCommand(p cmdb.IResource) *cobra.Command {
-	kind := strings.ToLower(p.GetKind())
+func NewCommand(r cmdb.IResource) *cobra.Command {
+	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
 		Short: "Get resources",
-		Args:  cobra.OnlyValidArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			page, _ := cmd.Flags().GetInt64("page")
-			limit, _ := cmd.Flags().GetInt64("limit")
-			output, _ := cmd.Flags().GetString("output")
-			selector, _ := cmd.Flags().GetString("selector")
-			field_selector, _ := cmd.Flags().GetString("field_selector")
-			opt := cmdb.NewListOptions(
-				page,
-				limit,
-				cmdb.ParseSelector(selector),
-				cmdb.ParseSelector(field_selector),
-			)
-			rsb := p.List(opt)
-			rs := []cmdb.Resource{}
-			if err := json.Unmarshal(rsb, &rs); err != nil {
-				panic(err)
-			}
-			switch output {
-			case "simple":
-				tableHeader := []string{"NAME", "CREATED_AT"}
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetHeader(tableHeader)
-				table.SetBorder(false)
-				table.SetColumnSeparator("")
-				table.SetHeaderLine(false)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				for _, r := range rs {
-					createTime, _ := r.Metadata.CreationTimeStamp.Local().MarshalText()
-					row := []string{r.Metadata.Name, string(createTime)}
-					table.Append(row)
-				}
-				table.Render()
-			case "json":
-				rsbts, _ := json.MarshalIndent(rs, "", "  ")
-				fmt.Printf("%v", string(rsbts))
-			case "yaml":
-				var s []string
-				for _, r := range rs {
-					byts, _ := yaml.Marshal(r)
-					s = append(s, string(byts))
-				}
-				result := strings.Join(s, "---\n")
-				fmt.Printf("%v", result)
-			}
+		Args:  cobra.RangeArgs(0, 1),
+		Run: func(c *cobra.Command, args []string) {
+			getCmdHandle(c, r, args)
 		},
 	}
-	GetCmd.Flags().StringP("name", "n", "", "specify name")
-	GetCmd.Flags().StringP("output", "o", "simple", "page number")
-	GetCmd.Flags().Int64P("page", "p", 0, "page number")
-	GetCmd.Flags().Int64P("limit", "s", 0, "limit size, 0 is no limit")
-	GetCmd.Flags().StringP("selector", "l", "", "specify name")
-	GetCmd.Flags().String("field-selector", "", "specify name")
+	addFlags(GetCmd)
 	return GetCmd
+}
+
+func getCmdHandle(c *cobra.Command, r cmdb.IResource, args []string) {
+	outputFmt, _ := c.Flags().GetString("output")
+	// var name string
+	// if len(args) == 1 {
+	// 	name = args[0]
+	// }
+	// TODO: 查询指定名称 Resource
+	// TODO: 处理 namespace
+	opt := parseListOptionsFlags(c)
+	resources := r.List(opt)
+
+	switch outputFmt {
+	case "simple":
+		outputFmtSimple(resources)
+	case "json":
+		outputFmtJson(resources)
+	case "yaml":
+		outputFmtYaml(resources)
+
+	}
+}
+
+func addFlags(c *cobra.Command) {
+	// TODO: namespace 应为全局参数
+	c.Flags().StringP("namespace", "n", "", "namespace name")
+	c.Flags().StringP("output", "o", "simple", "page number")
+	c.Flags().Int64P("page", "p", 0, "page number")
+	c.Flags().Int64P("limit", "s", 0, "limit size, 0 is no limit")
+	c.Flags().StringP("selector", "l", "", "specify name")
+	c.Flags().String("field-selector", "", "specify name")
+}
+
+func parseListOptionsFlags(c *cobra.Command) *cmdb.ListOptions {
+	namespace, _ := c.Flags().GetString("namespace")
+	page, _ := c.Flags().GetInt64("page")
+	limit, _ := c.Flags().GetInt64("limit")
+	selector, _ := c.Flags().GetString("selector")
+	field_selector, _ := c.Flags().GetString("field_selector")
+	opt := cmdb.NewListOptions(
+		namespace,
+		page,
+		limit,
+		cmdb.ParseSelector(selector),
+		cmdb.ParseSelector(field_selector),
+	)
+	return opt
+}
+
+func outputFmtSimple(resources []map[string]interface{}) {
+	tableHeader := []string{"NAME", "CREATED_AT"}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(tableHeader)
+	table.SetBorder(false)
+	table.SetColumnSeparator("")
+	table.SetHeaderLine(false)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	for _, r := range resources {
+		metadataField := r["metadata"].(map[string]interface{})
+		createTime := metadataField["creationTimestamp"].(string)
+		name := metadataField["name"].(string)
+		row := []string{name, string(createTime)}
+		table.Append(row)
+	}
+	table.Render()
+}
+
+func outputFmtJson(resources []map[string]interface{}) {
+	rsbts, _ := json.MarshalIndent(resources, "", "  ")
+	fmt.Printf("%v", string(rsbts))
+}
+
+func outputFmtYaml(resources []map[string]interface{}) {
+	var s []string
+	for _, r := range resources {
+		byts, _ := yaml.MarshalWithOptions(r, yaml.AutoInt())
+		s = append(s, string(byts))
+	}
+	result := strings.Join(s, "---\n")
+	fmt.Printf("%v", result)
 }

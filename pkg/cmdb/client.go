@@ -1,6 +1,7 @@
 package cmdb
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,9 +11,13 @@ import (
 	"strings"
 )
 
-func (p *Resource) List(opt *ListOptions) []byte {
+func (p *Project) List(opt *ListOptions) []map[string]interface{} {
+	return ListResource(p, opt)
+}
+
+func ListResource(r IResource, opt *ListOptions) []map[string]interface{} {
 	api_url := os.Getenv("CMDB_API_URL")
-	url := api_url + "/" + strings.ToLower(p.Kind) + "s/"
+	url := api_url + "/" + strings.ToLower(r.GetKind()) + "s/"
 	options := map[string]string{
 		"namespace":      opt.Namespace,
 		"page":           strconv.FormatInt(opt.Page, 10),
@@ -21,7 +26,11 @@ func (p *Resource) List(opt *ListOptions) []byte {
 		"field_selector": EncodeSelector(opt.FieldSelector),
 	}
 	body := httpGet(url, options)
-	return []byte(body)
+	var mapData []map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
+		panic(err)
+	}
+	return mapData
 }
 
 func EncodeSelector(selector map[string]string) string {

@@ -16,8 +16,9 @@ type ListOptions struct {
 	FieldSelector map[string]string `json:"field_selector"`
 }
 
-func NewListOptions(page int64, limit int64, selector map[string]string, field_selector map[string]string) *ListOptions {
+func NewListOptions(namespace string, page int64, limit int64, selector map[string]string, field_selector map[string]string) *ListOptions {
 	obj := &ListOptions{
+		Namespace:     namespace,
 		Page:          page,
 		Limit:         limit,
 		Selector:      selector,
@@ -30,7 +31,7 @@ func NewListOptions(page int64, limit int64, selector map[string]string, field_s
 }
 
 type IResource interface {
-	List(opt *ListOptions) []byte
+	List(opt *ListOptions) []map[string]interface{}
 	GetKind() string
 }
 
@@ -94,12 +95,16 @@ type ProjectSpec struct {
 }
 
 type Project struct {
-	Resource
+	*Resource
 	Spec ProjectSpec `json:"spec"`
+}
+
+func (r *Project) GetKind() string {
+	return r.Kind
 }
 
 func NewProject() *Project {
 	return &Project{
-		Resource: *NewResource("Project"),
+		Resource: NewResource("Project"),
 	}
 }

@@ -22,6 +22,7 @@ var getCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(NewCommand(cmdb.NewProject()))
+	getCmd.AddCommand(NewCommand(cmdb.NewApp()))
 	RootCmd.AddCommand(getCmd)
 }
 
@@ -41,14 +42,17 @@ func NewCommand(r cmdb.IResource) *cobra.Command {
 
 func getCmdHandle(c *cobra.Command, r cmdb.IResource, args []string) {
 	outputFmt, _ := c.Flags().GetString("output")
-	// var name string
-	// if len(args) == 1 {
-	// 	name = args[0]
-	// }
-	// TODO: 查询指定名称 Resource
-	// TODO: 处理 namespace
+	revision, _ := c.Flags().GetInt64("revision")
 	opt := parseListOptionsFlags(c)
-	resources := r.List(opt)
+	var name string
+	var resources []map[string]interface{}
+
+	if len(args) == 1 {
+		name = args[0]
+		resources = append(resources, r.Read(name, opt.Namespace, revision))
+	} else {
+		resources = append(resources, r.List(opt)...)
+	}
 
 	switch outputFmt {
 	case "simple":

@@ -16,7 +16,13 @@ type ListOptions struct {
 	FieldSelector map[string]string `json:"field_selector"`
 }
 
-func NewListOptions(namespace string, page int64, limit int64, selector map[string]string, field_selector map[string]string) *ListOptions {
+func NewListOptions(
+	namespace string,
+	page int64,
+	limit int64,
+	selector map[string]string,
+	field_selector map[string]string,
+) *ListOptions {
 	obj := &ListOptions{
 		Namespace:     namespace,
 		Page:          page,
@@ -31,6 +37,7 @@ func NewListOptions(namespace string, page int64, limit int64, selector map[stri
 }
 
 type IResource interface {
+	Read(name string, namespace string, revision int64) map[string]interface{}
 	List(opt *ListOptions) []map[string]interface{}
 	GetKind() string
 }
@@ -78,10 +85,6 @@ type Resource struct {
 	Description string     `json:"description"`
 }
 
-func (r *Resource) GetKind() string {
-	return r.Kind
-}
-
 func NewResource(kind string) *Resource {
 	return &Resource{
 		APIVersion: APIVersion,
@@ -106,5 +109,31 @@ func (r *Project) GetKind() string {
 func NewProject() *Project {
 	return &Project{
 		Resource: NewResource("Project"),
+	}
+}
+
+type SCM struct {
+	Name    string `json:"name"`
+	Project string `json:"project"`
+	User    string `json:"user"`
+}
+
+type AppSpec struct {
+	Project string `json:"project"`
+	Scm     SCM    `json:"scm"`
+}
+
+type App struct {
+	*Resource
+	Spec AppSpec `json:"spec"`
+}
+
+func (r *App) GetKind() string {
+	return r.Kind
+}
+
+func NewApp() *App {
+	return &App{
+		Resource: NewResource("App"),
 	}
 }

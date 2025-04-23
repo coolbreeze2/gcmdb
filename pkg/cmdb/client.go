@@ -11,27 +11,66 @@ import (
 	"strings"
 )
 
-func (p *Project) List(opt *ListOptions) []map[string]interface{} {
-	return ListResource(p, opt)
+func (r *Project) Read(name string, namespace string, revision int64) map[string]interface{} {
+	return ReadResource(r, name, namespace, revision)
 }
 
+func (r *Project) List(opt *ListOptions) []map[string]interface{} {
+	return ListResource(r, opt)
+}
+
+func (r *App) Read(name string, namespace string, revision int64) map[string]interface{} {
+	return ReadResource(r, name, namespace, revision)
+}
+
+func (r *App) List(opt *ListOptions) []map[string]interface{} {
+	return ListResource(r, opt)
+}
+
+// TODO: 创建资源
+// TODO: 更新资源
+// TODO: 查询指定类型资源的总数 count
+// TODO: 查询指定类型资源的所有名称 names
+
+// 查询指定名称的资源详情
+func ReadResource(r IResource, name string, namespace string, revision int64) map[string]interface{} {
+	api_url := os.Getenv("CMDB_API_URL")
+	url := fmt.Sprintf("%s/%ss/%s", api_url, strings.ToLower(r.GetKind()), name)
+	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
+	body := httpGet(url, query)
+	var mapData map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
+		panic(err)
+	}
+	return mapData
+}
+
+// 查询多个资源详情
+// TODO: 处理 Namespace 隔离的资源
 func ListResource(r IResource, opt *ListOptions) []map[string]interface{} {
 	api_url := os.Getenv("CMDB_API_URL")
-	url := api_url + "/" + strings.ToLower(r.GetKind()) + "s/"
-	options := map[string]string{
-		"namespace":      opt.Namespace,
+	var url string
+	lkind := strings.ToLower(r.GetKind())
+	if opt.Namespace == "" {
+		url = fmt.Sprintf("%s/%ss/%s", api_url, lkind, opt.Namespace)
+	} else {
+		url = fmt.Sprintf("%s/%ss", api_url, lkind)
+	}
+	query := map[string]string{
 		"page":           strconv.FormatInt(opt.Page, 10),
 		"limit":          strconv.FormatInt(opt.Limit, 10),
 		"selector":       EncodeSelector(opt.Selector),
 		"field_selector": EncodeSelector(opt.FieldSelector),
 	}
-	body := httpGet(url, options)
+	body := httpGet(url, query)
 	var mapData []map[string]interface{}
 	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
 		panic(err)
 	}
 	return mapData
 }
+
+// TODO: 删除资源
 
 func EncodeSelector(selector map[string]string) string {
 	var pairs []string

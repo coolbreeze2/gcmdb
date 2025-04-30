@@ -8,40 +8,6 @@ import (
 
 const APIVersion string = "v1alpha"
 
-type ListOptions struct {
-	Namespace     string            `json:"namespace"`
-	Page          int64             `json:"page"`
-	Limit         int64             `json:"limit"`
-	Selector      map[string]string `json:"selector"`
-	FieldSelector map[string]string `json:"field_selector"`
-}
-
-func NewListOptions(
-	namespace string,
-	page int64,
-	limit int64,
-	selector map[string]string,
-	field_selector map[string]string,
-) *ListOptions {
-	obj := &ListOptions{
-		Namespace:     namespace,
-		Page:          page,
-		Limit:         limit,
-		Selector:      selector,
-		FieldSelector: field_selector,
-	}
-	if err := defaults.Set(obj); err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-type IResource interface {
-	Read(name string, namespace string, revision int64) map[string]interface{}
-	List(opt *ListOptions) []map[string]interface{}
-	GetKind() string
-}
-
 type ManagedFields struct {
 	Manager   string    `json:"manager" default:"cmctl"`
 	Operation string    `json:"operation" default:"Updated"`
@@ -98,18 +64,8 @@ type ProjectSpec struct {
 }
 
 type Project struct {
-	*Resource
+	Resource
 	Spec ProjectSpec `json:"spec"`
-}
-
-func (r *Project) GetKind() string {
-	return r.Kind
-}
-
-func NewProject() *Project {
-	return &Project{
-		Resource: NewResource("Project"),
-	}
 }
 
 type SCM struct {
@@ -124,16 +80,6 @@ type AppSpec struct {
 }
 
 type App struct {
-	*Resource
+	Resource
 	Spec AppSpec `json:"spec"`
-}
-
-func (r *App) GetKind() string {
-	return r.Kind
-}
-
-func NewApp() *App {
-	return &App{
-		Resource: NewResource("App"),
-	}
 }

@@ -3,7 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"goTool/pkg/cmdb"
+	"goTool/pkg/cmdb/client"
 	"os"
 	"strings"
 
@@ -21,12 +21,12 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-	getCmd.AddCommand(NewCommand(cmdb.NewProject()))
-	getCmd.AddCommand(NewCommand(cmdb.NewApp()))
+	getCmd.AddCommand(NewCommand(client.NewProject()))
+	getCmd.AddCommand(NewCommand(client.NewApp()))
 	RootCmd.AddCommand(getCmd)
 }
 
-func NewCommand(r cmdb.IResource) *cobra.Command {
+func NewCommand(r client.Object) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
@@ -40,7 +40,7 @@ func NewCommand(r cmdb.IResource) *cobra.Command {
 	return GetCmd
 }
 
-func getCmdHandle(c *cobra.Command, r cmdb.IResource, args []string) {
+func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
 	outputFmt, _ := c.Flags().GetString("output")
 	revision, _ := c.Flags().GetInt64("revision")
 	opt := parseListOptionsFlags(c)
@@ -55,7 +55,7 @@ func getCmdHandle(c *cobra.Command, r cmdb.IResource, args []string) {
 	}
 
 	switch outputFmt {
-	case "simple":
+	default:
 		outputFmtSimple(resources)
 	case "json":
 		outputFmtJson(resources)
@@ -75,18 +75,18 @@ func addFlags(c *cobra.Command) {
 	c.Flags().String("field-selector", "", "specify name")
 }
 
-func parseListOptionsFlags(c *cobra.Command) *cmdb.ListOptions {
+func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
 	namespace, _ := c.Flags().GetString("namespace")
 	page, _ := c.Flags().GetInt64("page")
 	limit, _ := c.Flags().GetInt64("limit")
 	selector, _ := c.Flags().GetString("selector")
 	field_selector, _ := c.Flags().GetString("field_selector")
-	opt := cmdb.NewListOptions(
+	opt := client.NewListOptions(
 		namespace,
 		page,
 		limit,
-		cmdb.ParseSelector(selector),
-		cmdb.ParseSelector(field_selector),
+		client.ParseSelector(selector),
+		client.ParseSelector(field_selector),
 	)
 	return opt
 }

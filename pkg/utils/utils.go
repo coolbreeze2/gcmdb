@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"goTool/pkg/cmdb/client"
 	"reflect"
 )
 
@@ -40,12 +41,16 @@ func StructToMap(obj interface{}) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func MapToStruct(data interface{}, result interface{}, typ reflect.Type) error {
+func MapToStruct(data interface{}, out client.Object, typ reflect.Type) error {
 	// data: map 或 []map
 	// result: map 或 []map
-	v := reflect.ValueOf(result)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
-		return fmt.Errorf("result must be a non-nil pointer")
+	v := reflect.ValueOf(out)
+	if v.Kind() != reflect.Ptr {
+		return fmt.Errorf("out must be a pointer")
+	}
+
+	if v.IsNil() {
+		return fmt.Errorf("out must be a non-nil")
 	}
 
 	val := reflect.ValueOf(data)
@@ -58,43 +63,44 @@ func MapToStruct(data interface{}, result interface{}, typ reflect.Type) error {
 			keyStr := key.String()
 			fmt.Printf("正在设置字段%v\n", keyStr)
 			// TODO: fix 这里传入的应该是 struct 而不是指针
-			field, ok := FieldByTag(result, "json", keyStr)
+			field, ok := FieldByTag(out, "json", keyStr)
 			if ok && field.IsValid() && field.CanSet() {
 				field.Set(val.MapIndex(key).Convert(field.Type()))
 			} else {
 				fmt.Printf("字段%v无效或不可设置\n", keyStr)
 			}
 		}
-	} else if valKind == reflect.Array || valKind == reflect.Slice {
-		// 确保 result 是切片的指针
-		resultSlice := v.Elem()
-		if resultSlice.Kind() != reflect.Slice {
-			return fmt.Errorf("result must be a pointer to slice")
-		}
-
-		// 遍历每一个元素
-		for i := range val.Len() {
-			elem := val.Index(i)
-
-			// 创建一个新的结构体实例并赋值
-			newElem := reflect.New(typ.Elem()).Elem()
-
-			if elem.Kind() == reflect.Map {
-				// 将 map 的内容填充到新的结构体实例中
-				for _, key := range elem.MapKeys() {
-					keyStr := key.String()
-					field := newElem.FieldByName(keyStr)
-					if field.IsValid() && field.CanSet() {
-						field.Set(elem.MapIndex(key).Convert(field.Type()))
-					}
-				}
-			}
-
-			// 将新实例添加到切片中
-			resultSlice.Set(reflect.Append(resultSlice, newElem))
-		}
-		result = resultSlice
 	}
+	// } else if valKind == reflect.Array || valKind == reflect.Slice {
+	// 	// 确保 result 是切片的指针
+	// 	resultSlice := v.Elem()
+	// 	if resultSlice.Kind() != reflect.Slice {
+	// 		return fmt.Errorf("result must be a pointer to slice")
+	// 	}
+
+	// 	// 遍历每一个元素
+	// 	for i := range val.Len() {
+	// 		elem := val.Index(i)
+
+	// 		// 创建一个新的结构体实例并赋值
+	// 		newElem := reflect.New(typ.Elem()).Elem()
+
+	// 		if elem.Kind() == reflect.Map {
+	// 			// 将 map 的内容填充到新的结构体实例中
+	// 			for _, key := range elem.MapKeys() {
+	// 				keyStr := key.String()
+	// 				field := newElem.FieldByName(keyStr)
+	// 				if field.IsValid() && field.CanSet() {
+	// 					field.Set(elem.MapIndex(key).Convert(field.Type()))
+	// 				}
+	// 			}
+	// 		}
+
+	// 		// 将新实例添加到切片中
+	// 		resultSlice.Set(reflect.Append(resultSlice, newElem))
+	// 	}
+	// 	out = resultSlice
+	// }
 	return nil
 }
 

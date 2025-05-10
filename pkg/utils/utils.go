@@ -4,8 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"goTool/pkg/cmdb/client"
+	"net/url"
+	"path"
 	"reflect"
+	"strings"
 )
+
+func UrlJoin(baseURL string, paths ...string) (string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+
+	// 拼接路径部分
+	for _, p := range paths {
+		base.Path = path.Join(base.Path, p)
+	}
+
+	// 确保路径以 / 结尾
+	if !strings.HasSuffix(base.Path, "/") {
+		base.Path += "/"
+	}
+
+	return base.String(), nil
+}
 
 func StructToMap(obj interface{}) (map[string]interface{}, error) {
 	// 检查 obj 是否是切片或数组类型

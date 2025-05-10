@@ -6,7 +6,7 @@ import (
 )
 
 // 大数加法
-func BigIntergerSum(n1, n2 string) string {
+func BigIntergerAdd(n1, n2 string) string {
 	var result string
 
 	len1 := len(n1)
@@ -77,11 +77,64 @@ func BigIntergerMulti(n1, n2 string) string {
 			}
 		}
 		iresult = iresult + strings.Repeat("0", i)
-		result = BigIntergerSum(result, iresult)
+		result = BigIntergerAdd(result, iresult)
 	}
 	return result
 }
 
-// TODO: 大数除法
+// 大数减法
+func BigIntergerSub(n1, n2 string) string {
+	var result string
 
-// TODO: 大数减法
+	len1 := len(n1)
+	len2 := len(n2)
+	maxLength := max(len1, len2)
+	// 前置补0对齐
+	n1 = strings.Repeat("0", maxLength-len1) + n1
+	n2 = strings.Repeat("0", maxLength-len2) + n2
+	negative := false
+	maxN := n1
+	minN := n2
+	if n1 < n2 {
+		negative = true
+		maxN = n2
+		minN = n1
+	}
+
+	flag := 0
+	for i := 0; i < maxLength; i++ {
+		// 从末位开始
+		index := maxLength - i - 1
+		maxNi := int(maxN[index] - '0')
+		minNi := int(minN[index] - '0')
+		sub := maxNi - minNi
+		// 借位
+		if flag != 0 {
+			sub -= flag
+			flag = 0
+		}
+		if sub < 0 {
+			// 倒序拼接
+			result = strconv.Itoa(sub) + result
+			flag = 1
+		} else {
+			result = strconv.Itoa(sub) + result
+		}
+	}
+	if negative {
+		result = "-" + result
+	}
+	return result
+}
+
+// TODO: 大数除法(整除)
+func BigIntergerDivision(n1, n2 string) string {
+	var result string
+	return result
+}
+
+// TODO: 四则运算，将中缀表达式转换为逆波兰表达式(调度场算法)
+func BigIntergerArithmetic(n string) string {
+	var result string
+	return result
+}

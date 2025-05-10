@@ -18,3 +18,17 @@ func TestBigIntergerSum(t *testing.T) {
 		}
 	}
 }
+
+func TestBigIntergerMulti(t *testing.T) {
+	cases := [][]string{
+		{"99999999999999999999", "99999999999999999", "9999999999999999899900000000000000001"},
+		{"1234", "123", "151782"},
+	}
+	for i := 0; i < len(cases); i++ {
+		result := BigIntergerMulti(cases[i][0], cases[i][1])
+		expected := cases[i][2]
+		if result != expected {
+			panic(fmt.Sprintf("diff:\n%v\n%v", result, expected))
+		}
+	}
+}

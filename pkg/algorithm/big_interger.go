@@ -7,6 +7,7 @@ import (
 
 // 大数加法
 func BigIntergerAdd(n1, n2 string) string {
+	// TODO: 处理负数
 	var result string
 
 	len1 := len(n1)
@@ -45,6 +46,7 @@ func BigIntergerAdd(n1, n2 string) string {
 
 // 大数乘法
 func BigIntergerMulti(n1, n2 string) string {
+	// TODO: 处理负数
 	var result string
 
 	len1 := len(n1)
@@ -84,6 +86,7 @@ func BigIntergerMulti(n1, n2 string) string {
 
 // 大数减法
 func BigIntergerSub(n1, n2 string) string {
+	// TODO: 处理负数
 	var result string
 
 	len1 := len(n1)
@@ -107,29 +110,56 @@ func BigIntergerSub(n1, n2 string) string {
 		index := maxLength - i - 1
 		maxNi := int(maxN[index] - '0')
 		minNi := int(minN[index] - '0')
-		sub := maxNi - minNi
+		var sub int
 		// 借位
 		if flag != 0 {
-			sub -= flag
+			maxNi -= flag
 			flag = 0
 		}
-		if sub < 0 {
-			// 倒序拼接
-			result = strconv.Itoa(sub) + result
+		if maxNi < minNi {
+			maxNi += 10
 			flag = 1
-		} else {
-			result = strconv.Itoa(sub) + result
 		}
+		sub = maxNi - minNi
+		result = strconv.Itoa(sub) + result
 	}
+	// 移除前置0
+	result = strings.TrimLeft(result, "0")
 	if negative {
 		result = "-" + result
 	}
 	return result
 }
 
-// TODO: 大数除法(整除)
+// 大数除法(整除)
 func BigIntergerDivision(n1, n2 string) string {
+	// TODO: 处理负数
 	var result string
+
+	if n1 < n2 {
+		return "0"
+	}
+	len1 := len(n1)
+	len2 := len(n2)
+
+	flag := 0
+	n2i := n2 + strings.Repeat("0", len1-len2)
+	subResult := n1
+	for {
+		subResult_ := BigIntergerSub(subResult, n2i)
+		if strings.HasPrefix(subResult_, "-") {
+			break
+		}
+		subResult = subResult_
+		flag++
+	}
+	result = strconv.Itoa(flag)
+	if len1-len2 > 0 {
+		result += strings.Repeat("0", len1-len2)
+	}
+	if subResult > n2 || len(subResult) > len(n2) {
+		result = BigIntergerAdd(result, BigIntergerDivision(subResult, n2))
+	}
 	return result
 }
 

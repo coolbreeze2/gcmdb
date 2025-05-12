@@ -9,6 +9,7 @@ func TestBigIntergerSum(t *testing.T) {
 	cases := [][]string{
 		{"99999999999999999999", "99999999999999999", "100099999999999999998"},
 		{"1234", "123", "1357"},
+		// {"-99999999999999999999", "99999999999999999", "-99900000000000000000"},
 	}
 	for i := 0; i < len(cases); i++ {
 		result := BigIntergerAdd(cases[i][0], cases[i][1])
@@ -23,6 +24,7 @@ func TestBigIntergerMulti(t *testing.T) {
 	cases := [][]string{
 		{"99999999999999999999", "99999999999999999", "9999999999999999899900000000000000001"},
 		{"1234", "123", "151782"},
+		// {"-1234", "123", "-151782"},
 	}
 	for i := 0; i < len(cases); i++ {
 		result := BigIntergerMulti(cases[i][0], cases[i][1])
@@ -36,10 +38,27 @@ func TestBigIntergerMulti(t *testing.T) {
 func TestBigIntergerSub(t *testing.T) {
 	cases := [][]string{
 		{"99999999999999999999", "99999999999999999", "99900000000000000000"},
-		{"1234", "123", "1111"},
+		{"1234", "1200", "34"},
+		{"34", "1200", "-1166"},
+		// {"-1234", "1200", "-2434"},
 	}
 	for i := 0; i < len(cases); i++ {
 		result := BigIntergerSub(cases[i][0], cases[i][1])
+		expected := cases[i][2]
+		if result != expected {
+			panic(fmt.Sprintf("%v!=%v", result, expected))
+		}
+	}
+}
+
+func TestBigIntergerDivision(t *testing.T) {
+	cases := [][]string{
+		{"9999999999999999999999", "99999999999999999", "100000"},
+		{"1234", "12", "102"},
+		// {"-1234", "12", "-102"},
+	}
+	for i := 0; i < len(cases); i++ {
+		result := BigIntergerDivision(cases[i][0], cases[i][1])
 		expected := cases[i][2]
 		if result != expected {
 			panic(fmt.Sprintf("%v!=%v", result, expected))

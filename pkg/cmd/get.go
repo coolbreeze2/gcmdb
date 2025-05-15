@@ -21,12 +21,12 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-	getCmd.AddCommand(NewCommand(client.NewProject()))
-	getCmd.AddCommand(NewCommand(client.NewApp()))
+	getCmd.AddCommand(newGetCommand(client.NewProject()))
+	getCmd.AddCommand(newGetCommand(client.NewApp()))
 	RootCmd.AddCommand(getCmd)
 }
 
-func NewCommand(r client.Object) *cobra.Command {
+func newGetCommand(r client.Object) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
@@ -36,7 +36,7 @@ func NewCommand(r client.Object) *cobra.Command {
 			getCmdHandle(c, r, args)
 		},
 	}
-	addFlags(GetCmd)
+	addGetFlags(GetCmd)
 	return GetCmd
 }
 
@@ -72,7 +72,7 @@ func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
 	}
 }
 
-func addFlags(c *cobra.Command) {
+func addGetFlags(c *cobra.Command) {
 	// TODO: namespace 应为全局参数
 	c.Flags().StringP("namespace", "n", "", "namespace name")
 	c.Flags().StringP("output", "o", "simple", "page number")

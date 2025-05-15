@@ -13,5 +13,5 @@ type HttpRequestArgs struct {
 	Url     string
 	Query   map[string]string
 	Headers map[string]string
-	Data    string
+	Data    any
 }

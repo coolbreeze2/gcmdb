@@ -1,0 +1,15 @@
+apiVersion: v1alpha
+description: ""
+kind: App
+metadata:
+  annotations: {}
+  labels:
+    end_type: back
+    language: python
+  name: dev-app
+  project: devops
+spec:
+  scm:
+    name: gitlab-test
+    project: dev-app
+    user: project2

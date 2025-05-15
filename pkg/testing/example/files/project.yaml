@@ -1,0 +1,15 @@
+apiVersion: v1alpha
+description: ""
+kind: Project
+metadata:
+  annotations: {}
+  creationTimestamp: "2023-11-09T08:46:17+00:00"
+  labels: {}
+  managedFields:
+    manager: cmctl
+    operation: Updated
+    time: "2025-05-15T08:56:31+00:00"
+  name: devops
+  revision: 15
+spec:
+  nameInChain: PMXQQj

@@ -19,40 +19,9 @@ import (
 type Project cmdb.Project
 type App cmdb.App
 
-func NewProject() *Project {
-	return &Project{
-		Resource: *cmdb.NewResource("Project"),
-	}
-}
-
-func (r *Project) GetKind() string {
-	return r.Kind
-}
-
-func (r *Project) Read(name string, namespace string, revision int64) (map[string]any, error) {
-	return ReadResource(r, name, namespace, revision)
-}
-
-func (r *Project) List(opt *ListOptions) ([]map[string]any, error) {
-	return ListResource(r, opt)
-}
-
-func (r *App) GetKind() string {
-	return r.Kind
-}
-
-func NewApp() *App {
-	return &App{
-		Resource: *cmdb.NewResource("App"),
-	}
-}
-
-func (r *App) Read(name string, namespace string, revision int64) (map[string]any, error) {
-	return ReadResource(r, name, namespace, revision)
-}
-
-func (r *App) List(opt *ListOptions) ([]map[string]any, error) {
-	return ListResource(r, opt)
+var KindMap = map[string]Object{
+	"Project": Project{},
+	"App":     App{},
 }
 
 func NewListOptions(
@@ -75,31 +44,103 @@ func NewListOptions(
 	return obj
 }
 
+func NewProject() *Project {
+	return &Project{
+		Resource: *cmdb.NewResource("Project"),
+	}
+}
+
+func (r Project) GetKind() string {
+	return r.Kind
+}
+
+func (r Project) Read(name string, namespace string, revision int64) (map[string]any, error) {
+	return ReadResource(r, name, namespace, revision)
+}
+
+func (r Project) List(opt *ListOptions) ([]map[string]any, error) {
+	return ListResource(r, opt)
+}
+
+func (r Project) Update(name string, namespace string, resource map[string]any) (map[string]any, error) {
+	return UpdateResource(r, name, namespace, resource)
+}
+
+func (r App) GetKind() string {
+	return r.Kind
+}
+
+func NewApp() *App {
+	return &App{
+		Resource: *cmdb.NewResource("App"),
+	}
+}
+
+func (r App) Read(name string, namespace string, revision int64) (map[string]any, error) {
+	return ReadResource(r, name, namespace, revision)
+}
+
+func (r App) List(opt *ListOptions) ([]map[string]any, error) {
+	return ListResource(r, opt)
+}
+
+func (r App) Update(name string, namespace string, resource map[string]any) (map[string]any, error) {
+	return UpdateResource(r, name, namespace, resource)
+}
+
 // TODO: 创建资源
-// TODO: 更新资源
+
+// 更新资源
+func UpdateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
+	var url, body string
+	var err error
+	var mapData map[string]any
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
+	if namespace == "" {
+		url, err = UrlJoin(apiUrl, lkind, name)
+	} else {
+		url, err = UrlJoin(apiUrl, lkind, namespace, name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if body, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
+		return nil, err
+	}
+	if body == "" {
+		return mapData, nil
+	}
+	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
+}
+
 // TODO: 查询指定类型资源的总数 count
 // TODO: 查询指定类型资源的所有名称 names
 
 // 查询指定名称的资源
 func ReadResource(r Object, name string, namespace string, revision int64) (map[string]any, error) {
-	api_url := os.Getenv("CMDB_API_URL")
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	var url string
+	var url, body string
 	var err error
+	var mapData map[string]any
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
 	if namespace == "" {
-		url, err = UrlJoin(api_url, lkind, name)
+		url, err = UrlJoin(apiUrl, lkind, name)
 	} else {
-		url, err = UrlJoin(api_url, lkind, namespace, name)
+		url, err = UrlJoin(apiUrl, lkind, namespace, name)
 	}
 	if err != nil {
 		return nil, err
 	}
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
-	body, err := DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
-	if err != nil {
+	if body, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
 		return nil, err
 	}
-	var mapData map[string]interface{}
 	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
 		return nil, err
 	}
@@ -108,14 +149,16 @@ func ReadResource(r Object, name string, namespace string, revision int64) (map[
 
 // 查询多个资源
 func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
-	api_url := os.Getenv("CMDB_API_URL")
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	var url string
+	var url, body string
 	var err error
+	var mapData []map[string]any
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
 	if opt.Namespace == "" {
-		url, err = UrlJoin(api_url, lkind)
+		url, err = UrlJoin(apiUrl, lkind, "/")
 	} else {
-		url, err = UrlJoin(api_url, lkind, opt.Namespace)
+		url, err = UrlJoin(apiUrl, lkind, opt.Namespace, "/")
 	}
 	if err != nil {
 		return nil, err
@@ -126,11 +169,9 @@ func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 		"selector":       EncodeSelector(opt.Selector),
 		"field_selector": EncodeSelector(opt.FieldSelector),
 	}
-	body, err := DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
-	if err != nil {
+	if body, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
 		return nil, err
 	}
-	var mapData []map[string]any
 	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
 		return nil, err
 	}
@@ -184,8 +225,12 @@ func DoHttpRequest(args HttpRequestArgs) (string, error) {
 
 	// 创建请求体
 	var body *bytes.Reader
-	if args.Data != "" {
-		body = bytes.NewReader([]byte(args.Data))
+	if args.Data != nil {
+		if data, err := json.Marshal(args.Data); err != nil {
+			return "", err
+		} else {
+			body = bytes.NewReader([]byte(data))
+		}
 	} else {
 		body = bytes.NewReader(nil)
 	}
@@ -230,9 +275,14 @@ func UrlJoin(baseURL string, paths ...string) (string, error) {
 	}
 
 	// 确保路径以 / 结尾
-	if strings.HasSuffix(baseURL, "/") {
+	if strings.HasSuffix(paths[len(paths)-1], "/") {
 		base.Path += "/"
 	}
 
 	return base.String(), nil
+}
+
+func GetCMDBAPIURL() string {
+	apiUrl := os.Getenv("CMDB_API_URL")
+	return apiUrl
 }

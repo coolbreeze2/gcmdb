@@ -1,8 +1,9 @@
 package client
 
 type Object interface {
-	Read(name string, namespace string, revision int64) (map[string]interface{}, error)
-	List(opt *ListOptions) ([]map[string]interface{}, error)
+	Read(name string, namespace string, revision int64) (map[string]any, error)
+	List(opt *ListOptions) ([]map[string]any, error)
+	Update(name string, namespace string, resource map[string]any) (map[string]any, error)
 	GetKind() string
 }
 

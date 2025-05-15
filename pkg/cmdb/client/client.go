@@ -1,12 +1,13 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"goTool/pkg/cmdb"
 	"io"
-	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -28,11 +29,11 @@ func (r *Project) GetKind() string {
 	return r.Kind
 }
 
-func (r *Project) Read(name string, namespace string, revision int64) map[string]interface{} {
+func (r *Project) Read(name string, namespace string, revision int64) (map[string]any, error) {
 	return ReadResource(r, name, namespace, revision)
 }
 
-func (r *Project) List(opt *ListOptions) []map[string]interface{} {
+func (r *Project) List(opt *ListOptions) ([]map[string]any, error) {
 	return ListResource(r, opt)
 }
 
@@ -46,11 +47,11 @@ func NewApp() *App {
 	}
 }
 
-func (r *App) Read(name string, namespace string, revision int64) map[string]interface{} {
+func (r *App) Read(name string, namespace string, revision int64) (map[string]any, error) {
 	return ReadResource(r, name, namespace, revision)
 }
 
-func (r *App) List(opt *ListOptions) []map[string]interface{} {
+func (r *App) List(opt *ListOptions) ([]map[string]any, error) {
 	return ListResource(r, opt)
 }
 
@@ -79,34 +80,45 @@ func NewListOptions(
 // TODO: 查询指定类型资源的总数 count
 // TODO: 查询指定类型资源的所有名称 names
 
-// 查询指定名称的资源详情
-func ReadResource(r Object, name string, namespace string, revision int64) map[string]interface{} {
+// 查询指定名称的资源
+func ReadResource(r Object, name string, namespace string, revision int64) (map[string]any, error) {
 	api_url := os.Getenv("CMDB_API_URL")
 	lkind := strings.ToLower(r.GetKind()) + "s"
 	var url string
+	var err error
 	if namespace == "" {
-		url = path.Join(api_url, lkind, name)
+		url, err = UrlJoin(api_url, lkind, name)
 	} else {
-		url = path.Join(api_url, lkind, namespace, name)
+		url, err = UrlJoin(api_url, lkind, namespace, name)
+	}
+	if err != nil {
+		return nil, err
 	}
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
-	body := httpGet(url, query)
-	var mapData map[string]interface{}
-	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
-		panic(err)
+	body, err := DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
+	if err != nil {
+		return nil, err
 	}
-	return mapData
+	var mapData map[string]interface{}
+	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
 }
 
-// 查询多个资源详情
-func ListResource(r Object, opt *ListOptions) []map[string]interface{} {
+// 查询多个资源
+func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 	api_url := os.Getenv("CMDB_API_URL")
 	lkind := strings.ToLower(r.GetKind()) + "s"
 	var url string
+	var err error
 	if opt.Namespace == "" {
-		url = path.Join(api_url, lkind)
+		url, err = UrlJoin(api_url, lkind)
 	} else {
-		url = path.Join(api_url, lkind, opt.Namespace)
+		url, err = UrlJoin(api_url, lkind, opt.Namespace)
+	}
+	if err != nil {
+		return nil, err
 	}
 	query := map[string]string{
 		"page":           strconv.FormatInt(opt.Page, 10),
@@ -114,16 +126,20 @@ func ListResource(r Object, opt *ListOptions) []map[string]interface{} {
 		"selector":       EncodeSelector(opt.Selector),
 		"field_selector": EncodeSelector(opt.FieldSelector),
 	}
-	body := httpGet(url, query)
-	var mapData []map[string]interface{}
-	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
-		panic(err)
+	body, err := DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
+	if err != nil {
+		return nil, err
 	}
-	return mapData
+	var mapData []map[string]any
+	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
 }
 
 // TODO: 删除资源
 
+// 解析 Selector map to string
 func EncodeSelector(selector map[string]string) string {
 	var pairs []string
 
@@ -135,6 +151,7 @@ func EncodeSelector(selector map[string]string) string {
 	return result
 }
 
+// 解析 Selector string to map
 func ParseSelector(s string) map[string]string {
 	values := strings.Split(s, ",")
 	_dict := map[string]string{}
@@ -148,29 +165,74 @@ func ParseSelector(s string) map[string]string {
 	return _dict
 }
 
-func httpGet(url string, query map[string]string) []byte {
-	req, err := http.NewRequest("GET", url, nil)
+// 发送HTTP请求
+func DoHttpRequest(args HttpRequestArgs) (string, error) {
+	// 构造URL带参数
+	u, err := url.Parse(args.Url)
 	if err != nil {
-		panic(err)
-	}
-	q := req.URL.Query()
-	for k, v := range query {
-		q.Add(k, v)
+		return "", err
 	}
 
-	req.URL.RawQuery = q.Encode()
-	res, err := http.DefaultClient.Do(req)
+	// 添加查询参数
+	q := u.Query()
+	for k, v := range args.Query {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
+	u.RawQuery = q.Encode()
+
+	// 创建请求体
+	var body *bytes.Reader
+	if args.Data != "" {
+		body = bytes.NewReader([]byte(args.Data))
+	} else {
+		body = bytes.NewReader(nil)
+	}
+
+	// 创建请求
+	req, err := http.NewRequest(args.Method, u.String(), body)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	body, err := io.ReadAll(res.Body)
+
+	// 添加请求头
+	for k, v := range args.Headers {
+		req.Header.Set(k, v)
+	}
+
+	// 使用默认客户端发起请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	res.Body.Close()
-	statusCode := res.StatusCode
-	if statusCode >= 400 {
-		log.Fatalf("status code: %v\n%s", statusCode, body)
+	defer resp.Body.Close()
+
+	// 读取响应内容
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
 	}
-	return body
+
+	return string(respBody), nil
+}
+
+func UrlJoin(baseURL string, paths ...string) (string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+
+	// 拼接路径部分
+	for _, p := range paths {
+		base.Path = path.Join(base.Path, p)
+	}
+
+	// 确保路径以 / 结尾
+	if strings.HasSuffix(baseURL, "/") {
+		base.Path += "/"
+	}
+
+	return base.String(), nil
 }

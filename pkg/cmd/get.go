@@ -44,14 +44,21 @@ func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
 	outputFmt, _ := c.Flags().GetString("output")
 	revision, _ := c.Flags().GetInt64("revision")
 	opt := parseListOptionsFlags(c)
+	var err error
 	var name string
-	var resources []map[string]interface{}
+	var resources []map[string]any
 
 	if len(args) == 1 {
 		name = args[0]
-		resources = append(resources, r.Read(name, opt.Namespace, revision))
+		var resource map[string]any
+		resource, err = r.Read(name, opt.Namespace, revision)
+		resources = append(resources, resource)
 	} else {
-		resources = append(resources, r.List(opt)...)
+		resources, err = r.List(opt)
+	}
+
+	if err != nil {
+		panic(err)
 	}
 
 	switch outputFmt {

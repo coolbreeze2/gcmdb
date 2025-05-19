@@ -37,3 +37,11 @@ func (r Project) Create(name string, namespace string, resource map[string]any) 
 func (r Project) Delete(name string, namespace string) (map[string]any, error) {
 	return DeleteResource(r, name, namespace)
 }
+
+func (r Project) Count(namespace string) (int, error) {
+	return CountResource(r, namespace)
+}
+
+func (r Project) GetNames(namespace string) ([]string, error) {
+	return GetResourceNames(r, namespace)
+}

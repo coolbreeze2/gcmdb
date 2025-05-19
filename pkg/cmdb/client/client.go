@@ -96,9 +96,6 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 	return mapData, nil
 }
 
-// TODO: 查询指定类型资源的总数 count
-// TODO: 查询指定类型资源的所有名称 names
-
 // 查询指定名称的资源
 func ReadResource(r Object, name string, namespace string, revision int64) (map[string]any, error) {
 	var url, body string
@@ -189,6 +186,48 @@ func DeleteResource(r Object, name string, namespace string) (map[string]any, er
 		return nil, err
 	}
 	return mapData, nil
+}
+
+// 查询指定类型资源的总数 count
+func CountResource(r Object, namespace string) (int, error) {
+	var url, body string
+	var err error
+	var count int
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
+	if url, err = UrlJoin(apiUrl, lkind, "count/"); err != nil {
+		return count, err
+	}
+	query := map[string]string{"namespace": namespace}
+	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
+		return count, err
+	}
+	if count, err = strconv.Atoi(body); err != nil {
+		return count, err
+	}
+	return count, nil
+}
+
+// TODO: 查询指定类型资源的所有名称 names
+func GetResourceNames(r Object, namespace string) ([]string, error) {
+	var url, body string
+	var err error
+	var names []string
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
+	if url, err = UrlJoin(apiUrl, lkind, "names/"); err != nil {
+		return names, err
+	}
+	query := map[string]string{"namespace": namespace}
+	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
+		return names, err
+	}
+	if err = json.Unmarshal([]byte(body), &names); err != nil {
+		return nil, err
+	}
+	return names, nil
 }
 
 // 解析 Selector map to string

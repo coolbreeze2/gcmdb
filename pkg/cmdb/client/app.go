@@ -10,6 +10,14 @@ func NewApp() *App {
 	}
 }
 
+func (r App) GetKind() string {
+	return r.Kind
+}
+
+func (r App) GetMetadata() cmdb.ObjectMeta {
+	return r.Metadata
+}
+
 func (r App) Read(name string, namespace string, revision int64) (map[string]any, error) {
 	return ReadResource(r, name, namespace, revision)
 }
@@ -30,10 +38,10 @@ func (r App) Delete(name string, namespace string) (map[string]any, error) {
 	return DeleteResource(r, name, namespace)
 }
 
-func (r App) GetKind() string {
-	return r.Kind
+func (r App) Count(namespace string) (int, error) {
+	return CountResource(r, namespace)
 }
 
-func (r App) GetMetadata() cmdb.ObjectMeta {
-	return r.Metadata
+func (r App) GetNames(namespace string) ([]string, error) {
+	return GetResourceNames(r, namespace)
 }

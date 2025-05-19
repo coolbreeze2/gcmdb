@@ -57,6 +57,20 @@ func TestListProject(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCountProject(t *testing.T) {
+	o := client.NewProject()
+	count, err := o.Count("")
+	assert.LessOrEqual(t, 1, count)
+	assert.NoError(t, err)
+}
+
+func TestGetProjectNames(t *testing.T) {
+	o := client.NewProject()
+	names, err := o.GetNames("")
+	assert.LessOrEqual(t, 1, len(names))
+	assert.NoError(t, err)
+}
+
 func TestUpdateProject(t *testing.T) {
 	o := client.NewProject()
 	obj, err := o.Read("go-devops", "", 0)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"goTool/pkg/cmdb"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,67 +14,6 @@ import (
 
 	"github.com/creasty/defaults"
 )
-
-type ObjectNotFoundError struct {
-	path      string
-	kind      string
-	name      string
-	namespace string
-}
-
-func (o ObjectNotFoundError) Error() string {
-	msg := fmt.Sprintf("%s/%s not found at %s", o.kind, o.name, o.path)
-	if o.namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
-	}
-	return msg
-}
-
-type ObjectValidateError struct {
-	path      string
-	kind      string
-	name      string
-	namespace string
-	message   string
-}
-
-func (o ObjectValidateError) Error() string {
-	msg := fmt.Sprintf("%s/%s validate error %s at %s", o.kind, o.name, o.message, o.path)
-	if o.namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
-	}
-	return msg
-}
-
-type ObjectAlreadyExistError struct {
-	path      string
-	kind      string
-	name      string
-	namespace string
-	message   string
-}
-
-func (o ObjectAlreadyExistError) Error() string {
-	msg := fmt.Sprintf("%s/%s already exist error %s at %s", o.kind, o.name, o.message, o.path)
-	if o.namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
-	}
-	return msg
-}
-
-type ServerError struct {
-	path       string
-	statusCode int
-	message    string
-}
-
-func (o ServerError) Error() string {
-	msg := fmt.Sprintf("Server response code %s Error at %s, %s", strconv.Itoa(o.statusCode), o.path, o.message)
-	return msg
-}
-
-type Project cmdb.Project
-type App cmdb.App
 
 func NewListOptions(
 	namespace string,
@@ -95,74 +33,6 @@ func NewListOptions(
 		panic(err)
 	}
 	return obj
-}
-
-func NewProject() *Project {
-	return &Project{
-		Resource: *cmdb.NewResource("Project"),
-	}
-}
-
-func (r Project) GetKind() string {
-	return r.Kind
-}
-
-func (r Project) GetMetadata() cmdb.ObjectMeta {
-	return r.Metadata
-}
-
-func (r Project) Read(name string, namespace string, revision int64) (map[string]any, error) {
-	return ReadResource(r, name, namespace, revision)
-}
-
-func (r Project) List(opt *ListOptions) ([]map[string]any, error) {
-	return ListResource(r, opt)
-}
-
-func (r Project) Update(name string, namespace string, resource map[string]any) (map[string]any, error) {
-	return UpdateResource(r, name, namespace, resource)
-}
-
-func (r Project) Create(name string, namespace string, resource map[string]any) (map[string]any, error) {
-	return CreateResource(r, name, namespace, resource)
-}
-
-func (r Project) Delete(name string, namespace string) (map[string]any, error) {
-	return DeleteResource(r, name, namespace)
-}
-
-func NewApp() *App {
-	return &App{
-		Resource: *cmdb.NewResource("App"),
-	}
-}
-
-func (r App) Read(name string, namespace string, revision int64) (map[string]any, error) {
-	return ReadResource(r, name, namespace, revision)
-}
-
-func (r App) List(opt *ListOptions) ([]map[string]any, error) {
-	return ListResource(r, opt)
-}
-
-func (r App) Update(name string, namespace string, resource map[string]any) (map[string]any, error) {
-	return UpdateResource(r, name, namespace, resource)
-}
-
-func (r App) Create(name string, namespace string, resource map[string]any) (map[string]any, error) {
-	return CreateResource(r, name, namespace, resource)
-}
-
-func (r App) Delete(name string, namespace string) (map[string]any, error) {
-	return DeleteResource(r, name, namespace)
-}
-
-func (r App) GetKind() string {
-	return r.Kind
-}
-
-func (r App) GetMetadata() cmdb.ObjectMeta {
-	return r.Metadata
 }
 
 // 创建资源

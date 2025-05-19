@@ -182,12 +182,14 @@ func CreateResource(r Object, name string, namespace string, resource map[string
 	if err != nil {
 		return nil, err
 	}
-	if body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
-		return nil, err
-	} else if statusCode == 422 {
+	removeResourceManageFields(resource)
+	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
+	if statusCode == 422 {
 		return nil, ObjectValidateError{apiUrl, lkind, name, namespace, body}
 	} else if statusCode == 400 {
 		return nil, ObjectAlreadyExistError{apiUrl, lkind, name, namespace, body}
+	} else if err != nil {
+		return nil, err
 	}
 	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
 		return nil, err
@@ -211,6 +213,7 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 	if err != nil {
 		return nil, err
 	}
+	removeResourceManageFields(resource)
 	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
 		return nil, err
 	}
@@ -342,6 +345,19 @@ func ParseSelector(s string) map[string]string {
 		_dict[splitedV[0]] = splitedV[1]
 	}
 	return _dict
+}
+
+// 移除系统管理字段
+func removeResourceManageFields(r map[string]any) {
+	fields := []string{"create_revision", "creationTimestamp", "managedFields", "revision", "version"}
+	metadata := r["metadata"].(map[string]any)
+	for index := range fields {
+		delete(metadata, fields[index])
+	}
+	if metadata["namespace"] == "" {
+		delete(metadata, "namespace")
+	}
+	r["metadata"] = metadata
 }
 
 // 发送HTTP请求

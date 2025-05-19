@@ -31,7 +31,7 @@ type ObjectMeta struct {
 	Revision          int64             `json:"revision"`
 	Version           int64             `json:"version"`
 	ManagedFields     ManagedFields     `json:"managedFields"`
-	CreationTimeStamp time.Time         `json:"creationTimeStamp"`
+	CreationTimeStamp time.Time         `json:"creationTimestamp"`
 	Labels            map[string]string `json:"labels"`
 	Annotations       map[string]string `json:"annotations"`
 }

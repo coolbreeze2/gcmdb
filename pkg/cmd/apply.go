@@ -45,7 +45,6 @@ func applyCmdHandle(c *cobra.Command) {
 		}
 	}
 	applyResources(resources)
-	// fmt.Printf("resources:%v", resources)
 }
 
 func addApplyFlags(c *cobra.Command) {
@@ -152,17 +151,6 @@ func updateResource(r client.Object) {
 	} else {
 		fmt.Printf("%v/%v configured\n", kinds, metadata.Name)
 	}
-}
-
-func mapToStruct(m map[string]any, s any) error {
-	// 先将 map 转为 JSON
-	data, err := json.Marshal(m)
-	if err != nil {
-		return err
-	}
-
-	// 再将 JSON 解析到结构体
-	return json.Unmarshal(data, s)
 }
 
 func structToMap(s any, m *map[string]any) error {

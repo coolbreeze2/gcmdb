@@ -30,7 +30,7 @@ func newGetCommand(r client.Object) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
-		Short: "Get resources",
+		Short: fmt.Sprintf("Get %s", kind),
 		Args:  cobra.RangeArgs(0, 1),
 		Run: func(c *cobra.Command, args []string) {
 			getCmdHandle(c, r, args)

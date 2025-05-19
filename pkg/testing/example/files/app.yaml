@@ -6,10 +6,10 @@ metadata:
   labels:
     end_type: back
     language: python
-  name: dev-app
-  project: devops
+  name: go-app
+  project: go-devops
 spec:
   scm:
     name: gitlab-test
-    project: dev-app
+    project: go-app
     user: project2

@@ -16,13 +16,66 @@ import (
 	"github.com/creasty/defaults"
 )
 
+type ObjectNotFoundError struct {
+	path      string
+	kind      string
+	name      string
+	namespace string
+}
+
+func (o ObjectNotFoundError) Error() string {
+	msg := fmt.Sprintf("%s/%s not found at %s", o.kind, o.name, o.path)
+	if o.namespace != "" {
+		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
+	}
+	return msg
+}
+
+type ObjectValidateError struct {
+	path      string
+	kind      string
+	name      string
+	namespace string
+	message   string
+}
+
+func (o ObjectValidateError) Error() string {
+	msg := fmt.Sprintf("%s/%s validate error %s at %s", o.kind, o.name, o.message, o.path)
+	if o.namespace != "" {
+		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
+	}
+	return msg
+}
+
+type ObjectAlreadyExistError struct {
+	path      string
+	kind      string
+	name      string
+	namespace string
+	message   string
+}
+
+func (o ObjectAlreadyExistError) Error() string {
+	msg := fmt.Sprintf("%s/%s already exist error %s at %s", o.kind, o.name, o.message, o.path)
+	if o.namespace != "" {
+		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
+	}
+	return msg
+}
+
+type ServerError struct {
+	path       string
+	statusCode int
+	message    string
+}
+
+func (o ServerError) Error() string {
+	msg := fmt.Sprintf("Server response code %s Error at %s, %s", strconv.Itoa(o.statusCode), o.path, o.message)
+	return msg
+}
+
 type Project cmdb.Project
 type App cmdb.App
-
-var KindMap = map[string]Object{
-	"Project": Project{},
-	"App":     App{},
-}
 
 func NewListOptions(
 	namespace string,
@@ -54,6 +107,10 @@ func (r Project) GetKind() string {
 	return r.Kind
 }
 
+func (r Project) GetMetadata() cmdb.ObjectMeta {
+	return r.Metadata
+}
+
 func (r Project) Read(name string, namespace string, revision int64) (map[string]any, error) {
 	return ReadResource(r, name, namespace, revision)
 }
@@ -66,8 +123,12 @@ func (r Project) Update(name string, namespace string, resource map[string]any) 
 	return UpdateResource(r, name, namespace, resource)
 }
 
-func (r App) GetKind() string {
-	return r.Kind
+func (r Project) Create(name string, namespace string, resource map[string]any) (map[string]any, error) {
+	return CreateResource(r, name, namespace, resource)
+}
+
+func (r Project) Delete(name string, namespace string) (map[string]any, error) {
+	return DeleteResource(r, name, namespace)
 }
 
 func NewApp() *App {
@@ -88,7 +149,51 @@ func (r App) Update(name string, namespace string, resource map[string]any) (map
 	return UpdateResource(r, name, namespace, resource)
 }
 
-// TODO: 创建资源
+func (r App) Create(name string, namespace string, resource map[string]any) (map[string]any, error) {
+	return CreateResource(r, name, namespace, resource)
+}
+
+func (r App) Delete(name string, namespace string) (map[string]any, error) {
+	return DeleteResource(r, name, namespace)
+}
+
+func (r App) GetKind() string {
+	return r.Kind
+}
+
+func (r App) GetMetadata() cmdb.ObjectMeta {
+	return r.Metadata
+}
+
+// 创建资源
+func CreateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
+	var url, body string
+	var statusCode int
+	var err error
+	var mapData map[string]any
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
+	if namespace == "" {
+		url, err = UrlJoin(apiUrl, lkind, "/")
+	} else {
+		url, err = UrlJoin(apiUrl, lkind, namespace, "/")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
+		return nil, err
+	} else if statusCode == 422 {
+		return nil, ObjectValidateError{apiUrl, lkind, name, namespace, body}
+	} else if statusCode == 400 {
+		return nil, ObjectAlreadyExistError{apiUrl, lkind, name, namespace, body}
+	}
+	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
+}
 
 // 更新资源
 func UpdateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
@@ -106,7 +211,7 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 	if err != nil {
 		return nil, err
 	}
-	if body, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
+	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
 		return nil, err
 	}
 	if body == "" {
@@ -124,6 +229,7 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 // 查询指定名称的资源
 func ReadResource(r Object, name string, namespace string, revision int64) (map[string]any, error) {
 	var url, body string
+	var statusCode int
 	var err error
 	var mapData map[string]any
 
@@ -138,8 +244,10 @@ func ReadResource(r Object, name string, namespace string, revision int64) (map[
 		return nil, err
 	}
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
-	if body, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
+	if body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
 		return nil, err
+	} else if statusCode == 404 {
+		return nil, ObjectNotFoundError{apiUrl, lkind, name, namespace}
 	}
 	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
 		return nil, err
@@ -169,7 +277,7 @@ func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 		"selector":       EncodeSelector(opt.Selector),
 		"field_selector": EncodeSelector(opt.FieldSelector),
 	}
-	if body, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
+	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
 		return nil, err
 	}
 	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
@@ -178,7 +286,37 @@ func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 	return mapData, nil
 }
 
-// TODO: 删除资源
+// 删除资源指定名称的资源
+func DeleteResource(r Object, name string, namespace string) (map[string]any, error) {
+	var url, body string
+	var statusCode int
+	var err error
+	var mapData map[string]any
+
+	apiUrl := GetCMDBAPIURL()
+	lkind := strings.ToLower(r.GetKind()) + "s"
+	if namespace == "" {
+		url, err = UrlJoin(apiUrl, lkind, name)
+	} else {
+		url, err = UrlJoin(apiUrl, lkind, namespace, name)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "DELETE", Url: url}); err != nil {
+		return nil, err
+	} else if statusCode == 404 {
+		return nil, ObjectNotFoundError{apiUrl, lkind, name, namespace}
+	} else if statusCode == 204 {
+		return mapData, nil
+	}
+
+	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
+}
 
 // 解析 Selector map to string
 func EncodeSelector(selector map[string]string) string {
@@ -207,27 +345,33 @@ func ParseSelector(s string) map[string]string {
 }
 
 // 发送HTTP请求
-func DoHttpRequest(args HttpRequestArgs) (string, error) {
+func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 	// 构造URL带参数
-	u, err := url.Parse(args.Url)
-	if err != nil {
-		return "", err
+	var request *http.Request
+	var response *http.Response
+	var respBody []byte
+	var url_ *url.URL
+	var query url.Values
+	var err error
+
+	if url_, err = url.Parse(args.Url); err != nil {
+		return "", -1, err
 	}
 
 	// 添加查询参数
-	q := u.Query()
+	query = url_.Query()
 	for k, v := range args.Query {
 		if v != "" {
-			q.Set(k, v)
+			query.Set(k, v)
 		}
 	}
-	u.RawQuery = q.Encode()
+	url_.RawQuery = query.Encode()
 
 	// 创建请求体
 	var body *bytes.Reader
 	if args.Data != nil {
 		if data, err := json.Marshal(args.Data); err != nil {
-			return "", err
+			return "", -1, err
 		} else {
 			body = bytes.NewReader([]byte(data))
 		}
@@ -236,31 +380,35 @@ func DoHttpRequest(args HttpRequestArgs) (string, error) {
 	}
 
 	// 创建请求
-	req, err := http.NewRequest(args.Method, u.String(), body)
-	if err != nil {
-		return "", err
+	if request, err = http.NewRequest(args.Method, url_.String(), body); err != nil {
+		return "", -1, err
 	}
 
 	// 添加请求头
 	for k, v := range args.Headers {
-		req.Header.Set(k, v)
+		request.Header.Set(k, v)
 	}
 
 	// 使用默认客户端发起请求
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
+	client := http.DefaultClient
+	if response, err = client.Do(request); err != nil {
+		return "", -1, err
 	}
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
 	// 读取响应内容
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+	if respBody, err = io.ReadAll(response.Body); err != nil {
+		return "", -1, err
 	}
 
-	return string(respBody), nil
+	srespBody := string(respBody)
+	statusCode := response.StatusCode
+	if statusCode >= 400 && statusCode != 404 {
+		err = ServerError{url_.String(), statusCode, srespBody}
+		return srespBody, response.StatusCode, err
+	}
+
+	return srespBody, statusCode, nil
 }
 
 func UrlJoin(baseURL string, paths ...string) (string, error) {

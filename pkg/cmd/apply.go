@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"goTool/pkg/cmdb/client"
 	"os"
+	"strings"
 
 	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
@@ -44,7 +45,7 @@ func applyCmdHandle(c *cobra.Command) {
 		}
 	}
 	applyResources(resources)
-	fmt.Printf("resources:%v", resources)
+	// fmt.Printf("resources:%v", resources)
 }
 
 func addApplyFlags(c *cobra.Command) {
@@ -78,22 +79,79 @@ func parseResourceFromFile(path string) (client.Object, error) {
 	}
 	kind := jsonObj["kind"]
 
-	if into, ok := client.KindMap[kind.(string)]; ok {
-		if err := mapToStruct(jsonObj, &into); err != nil {
-			return nil, err
-		} else {
-			return into, nil
-		}
+	var o client.Object
+	switch kind {
+	case "Project":
+		o = &client.Project{}
+	case "App":
+		o = &client.App{}
 	}
-	return nil, nil
+
+	if err := yaml.Unmarshal(file, o); err != nil {
+		return nil, err
+	}
+
+	return o, nil
 }
 
 func applyResources(resources []client.Object) {
-	//
+	for i := range resources {
+		applyResource(resources[i])
+	}
 }
 
-func applyResource(resource client.Object) {
-	//
+func applyResource(r client.Object) {
+	metadata := r.GetMetadata()
+	_, err := r.Read(metadata.Name, metadata.Namespace, 0)
+	switch err.(type) {
+	default:
+		if err != nil {
+			panic(err)
+		}
+	case client.ObjectNotFoundError:
+		// 不存在，则创建
+		createResource(r)
+	}
+	// 已存在，则更新
+	updateResource(r)
+}
+
+func createResource(r client.Object) {
+	var jsonObj, result map[string]any
+	var err error
+
+	metadata := r.GetMetadata()
+
+	if err = structToMap(r, &jsonObj); err != nil {
+		panic(err)
+	}
+	if result, err = r.Create(metadata.Name, metadata.Namespace, jsonObj); err != nil {
+		panic(err)
+	}
+	kinds := strings.ToLower(r.GetKind()) + "s"
+	if result == nil {
+		fmt.Printf("%v/%v created\n", kinds, metadata.Name)
+	}
+}
+
+func updateResource(r client.Object) {
+	var jsonObj, result map[string]any
+	var err error
+
+	metadata := r.GetMetadata()
+
+	if err = structToMap(r, &jsonObj); err != nil {
+		panic(err)
+	}
+	if result, err = r.Update(metadata.Name, metadata.Namespace, jsonObj); err != nil {
+		panic(err)
+	}
+	kinds := strings.ToLower(r.GetKind()) + "s"
+	if result == nil {
+		fmt.Printf("%v/%v unchanged\n", kinds, metadata.Name)
+	} else {
+		fmt.Printf("%v/%v configured\n", kinds, metadata.Name)
+	}
 }
 
 func mapToStruct(m map[string]any, s any) error {
@@ -105,4 +163,15 @@ func mapToStruct(m map[string]any, s any) error {
 
 	// 再将 JSON 解析到结构体
 	return json.Unmarshal(data, s)
+}
+
+func structToMap(s any, m *map[string]any) error {
+	// 先将 struct 转为 JSON
+	data, err := json.Marshal(s)
+	if err != nil {
+		return err
+	}
+
+	// 再将 JSON 解析到 map
+	return json.Unmarshal(data, m)
 }

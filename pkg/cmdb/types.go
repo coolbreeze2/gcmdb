@@ -26,6 +26,7 @@ func NewManagedFields() *ManagedFields {
 
 type ObjectMeta struct {
 	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace"`
 	CreateRevision    int64             `json:"create_revision"`
 	Revision          int64             `json:"revision"`
 	Version           int64             `json:"version"`
@@ -64,8 +65,8 @@ type ProjectSpec struct {
 }
 
 type Project struct {
-	Resource
-	Spec ProjectSpec `json:"spec"`
+	Resource `json:",inline"`
+	Spec     ProjectSpec `json:"spec"`
 }
 
 type SCM struct {
@@ -80,6 +81,6 @@ type AppSpec struct {
 }
 
 type App struct {
-	Resource
-	Spec AppSpec `json:"spec"`
+	Resource `json:",inline"`
+	Spec     AppSpec `json:"spec"`
 }

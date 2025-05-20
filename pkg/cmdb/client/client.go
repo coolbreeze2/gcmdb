@@ -1,14 +1,10 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
+	"goTool/global"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -42,55 +38,47 @@ func CreateResource(r Object, name string, namespace string, resource map[string
 	var err error
 	var mapData map[string]any
 
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if namespace == "" {
-		url, err = UrlJoin(apiUrl, lkind, "/")
-	} else {
-		url, err = UrlJoin(apiUrl, lkind, namespace, "/")
-	}
-	if err != nil {
+	if url, err = getCreateListResourceUrl(r, namespace); err != nil {
 		return nil, err
 	}
 	removeResourceManageFields(resource)
+
 	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
-	if statusCode == 422 {
-		return nil, ObjectValidateError{apiUrl, lkind, name, namespace, body}
-	} else if statusCode == 400 {
-		return nil, ObjectAlreadyExistError{apiUrl, lkind, name, namespace, body}
-	} else if err != nil {
+
+	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
 		return nil, err
 	}
-	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+
+	if mapData, err = unMarshalStringToMap(body); err != nil {
 		return nil, err
 	}
+
 	return mapData, nil
 }
 
 // 更新资源
 func UpdateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
 	var url, body string
+	var statusCode int
 	var err error
 	var mapData map[string]any
 
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if namespace == "" {
-		url, err = UrlJoin(apiUrl, lkind, name)
-	} else {
-		url, err = UrlJoin(apiUrl, lkind, namespace, name)
-	}
-	if err != nil {
+	if url, err = getURDResourceUrl(r, name, namespace); err != nil {
 		return nil, err
 	}
 	removeResourceManageFields(resource)
-	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource}); err != nil {
+
+	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
+
+	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
 		return nil, err
 	}
-	if body == "" {
+
+	if statusCode == 204 {
 		return mapData, nil
 	}
-	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+
+	if mapData, err = unMarshalStringToMap(body); err != nil {
 		return nil, err
 	}
 	return mapData, nil
@@ -103,25 +91,44 @@ func ReadResource(r Object, name string, namespace string, revision int64) (map[
 	var err error
 	var mapData map[string]any
 
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if namespace == "" {
-		url, err = UrlJoin(apiUrl, lkind, name)
-	} else {
-		url, err = UrlJoin(apiUrl, lkind, namespace, name)
-	}
-	if err != nil {
+	if url, err = getURDResourceUrl(r, name, namespace); err != nil {
 		return nil, err
 	}
+
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
-	if body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
-		return nil, err
-	} else if statusCode == 404 {
-		return nil, ObjectNotFoundError{apiUrl, lkind, name, namespace}
-	}
-	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
+
+	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
 		return nil, err
 	}
+
+	if mapData, err = unMarshalStringToMap(body); err != nil {
+		return nil, err
+	}
+	return mapData, nil
+}
+
+// 删除资源指定名称的资源
+func DeleteResource(r Object, name, namespace string) (map[string]any, error) {
+	var url, body string
+	var statusCode int
+	var err error
+	var mapData map[string]any
+
+	if url, err = getURDResourceUrl(r, name, namespace); err != nil {
+		return nil, err
+	}
+
+	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "DELETE", Url: url})
+
+	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
+		return nil, err
+	}
+
+	if statusCode == 204 {
+		return mapData, nil
+	}
+
 	return mapData, nil
 }
 
@@ -131,16 +138,10 @@ func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 	var err error
 	var mapData []map[string]any
 
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if opt.Namespace == "" {
-		url, err = UrlJoin(apiUrl, lkind, "/")
-	} else {
-		url, err = UrlJoin(apiUrl, lkind, opt.Namespace, "/")
-	}
-	if err != nil {
+	if url, err = getCreateListResourceUrl(r, opt.Namespace); err != nil {
 		return nil, err
 	}
+
 	query := map[string]string{
 		"page":           strconv.FormatInt(opt.Page, 10),
 		"limit":          strconv.FormatInt(opt.Limit, 10),
@@ -150,39 +151,8 @@ func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
 		return nil, err
 	}
-	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
-		return nil, err
-	}
-	return mapData, nil
-}
 
-// 删除资源指定名称的资源
-func DeleteResource(r Object, name string, namespace string) (map[string]any, error) {
-	var url, body string
-	var statusCode int
-	var err error
-	var mapData map[string]any
-
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if namespace == "" {
-		url, err = UrlJoin(apiUrl, lkind, name)
-	} else {
-		url, err = UrlJoin(apiUrl, lkind, namespace, name)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "DELETE", Url: url}); err != nil {
-		return nil, err
-	} else if statusCode == 404 {
-		return nil, ObjectNotFoundError{apiUrl, lkind, name, namespace}
-	} else if statusCode == 204 {
-		return mapData, nil
-	}
-
-	if err = json.Unmarshal([]byte(body), &mapData); err != nil {
+	if mapData, err = unMarshalStringToArrayMap(body); err != nil {
 		return nil, err
 	}
 	return mapData, nil
@@ -194,9 +164,7 @@ func CountResource(r Object, namespace string) (int, error) {
 	var err error
 	var count int
 
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if url, err = UrlJoin(apiUrl, lkind, "count/"); err != nil {
+	if url, err = getCountResourceUrl(r); err != nil {
 		return count, err
 	}
 	query := map[string]string{"namespace": namespace}
@@ -209,15 +177,13 @@ func CountResource(r Object, namespace string) (int, error) {
 	return count, nil
 }
 
-// TODO: 查询指定类型资源的所有名称 names
+// 查询指定类型资源的所有名称 names
 func GetResourceNames(r Object, namespace string) ([]string, error) {
 	var url, body string
 	var err error
 	var names []string
 
-	apiUrl := GetCMDBAPIURL()
-	lkind := strings.ToLower(r.GetKind()) + "s"
-	if url, err = UrlJoin(apiUrl, lkind, "names/"); err != nil {
+	if url, err = getResourceNamesUrl(r); err != nil {
 		return names, err
 	}
 	query := map[string]string{"namespace": namespace}
@@ -228,6 +194,76 @@ func GetResourceNames(r Object, namespace string) ([]string, error) {
 		return nil, err
 	}
 	return names, nil
+}
+
+// string to map
+func unMarshalStringToMap(body string) (map[string]any, error) {
+	var mapData map[string]any
+	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
+}
+
+// string to []map
+func unMarshalStringToArrayMap(body string) ([]map[string]any, error) {
+	var mapData []map[string]any
+	if err := json.Unmarshal([]byte(body), &mapData); err != nil {
+		return nil, err
+	}
+	return mapData, nil
+}
+
+// 格式化 CRUD 的错误信息
+func fmtCURDError(r Object, name, namespace, body string, statusCode int, err error) error {
+	apiUrl := getCMDBAPIURL()
+	lkind := LowerKind(r)
+	switch statusCode {
+	default:
+		return err
+	case 422:
+		return ObjectValidateError{apiUrl, lkind, name, namespace, body}
+	case 400:
+		if ok, _ := regexp.MatchString("referenced by", body); ok {
+			return ObjectReferencedError{apiUrl, lkind, name, namespace, body}
+		}
+		if ok, _ := regexp.MatchString("already exist", body); ok {
+			return ObjectAlreadyExistError{apiUrl, lkind, name, namespace, body}
+		}
+		return err
+	case 404:
+		return ObjectNotFoundError{apiUrl, lkind, name, namespace}
+	}
+}
+
+// 更新/查询/读取 的 URL
+func getURDResourceUrl(r Object, name, namespace string) (string, error) {
+	if namespace == "" {
+		return UrlJoin(getCMDBAPIURL(), LowerKind(r), name)
+	} else {
+		return UrlJoin(getCMDBAPIURL(), LowerKind(r), namespace, name)
+	}
+}
+
+// 创建/查询列表 的 URL
+func getCreateListResourceUrl(r Object, namespace string) (string, error) {
+	if namespace == "" {
+		return UrlJoin(getCMDBAPIURL(), LowerKind(r), "/")
+	} else {
+		return UrlJoin(getCMDBAPIURL(), LowerKind(r), namespace, "/")
+	}
+}
+
+func getCountResourceUrl(r Object) (string, error) {
+	return UrlJoin(getCMDBAPIURL(), LowerKind(r), "count", "/")
+}
+
+func getResourceNamesUrl(r Object) (string, error) {
+	return UrlJoin(getCMDBAPIURL(), LowerKind(r), "names", "/")
+}
+
+func LowerKind(r Object) string {
+	return strings.ToLower(r.GetKind()) + "s"
 }
 
 // 解析 Selector map to string
@@ -269,93 +305,6 @@ func removeResourceManageFields(r map[string]any) {
 	r["metadata"] = metadata
 }
 
-// 发送HTTP请求
-func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
-	// 构造URL带参数
-	var request *http.Request
-	var response *http.Response
-	var respBody []byte
-	var url_ *url.URL
-	var query url.Values
-	var err error
-
-	if url_, err = url.Parse(args.Url); err != nil {
-		return "", -1, err
-	}
-
-	// 添加查询参数
-	query = url_.Query()
-	for k, v := range args.Query {
-		if v != "" {
-			query.Set(k, v)
-		}
-	}
-	url_.RawQuery = query.Encode()
-
-	// 创建请求体
-	var body *bytes.Reader
-	if args.Data != nil {
-		if data, err := json.Marshal(args.Data); err != nil {
-			return "", -1, err
-		} else {
-			body = bytes.NewReader([]byte(data))
-		}
-	} else {
-		body = bytes.NewReader(nil)
-	}
-
-	// 创建请求
-	if request, err = http.NewRequest(args.Method, url_.String(), body); err != nil {
-		return "", -1, err
-	}
-
-	// 添加请求头
-	for k, v := range args.Headers {
-		request.Header.Set(k, v)
-	}
-
-	// 使用默认客户端发起请求
-	client := http.DefaultClient
-	if response, err = client.Do(request); err != nil {
-		return "", -1, err
-	}
-	defer response.Body.Close()
-
-	// 读取响应内容
-	if respBody, err = io.ReadAll(response.Body); err != nil {
-		return "", -1, err
-	}
-
-	srespBody := string(respBody)
-	statusCode := response.StatusCode
-	if statusCode >= 400 && statusCode != 404 {
-		err = ServerError{url_.String(), statusCode, srespBody}
-		return srespBody, response.StatusCode, err
-	}
-
-	return srespBody, statusCode, nil
-}
-
-func UrlJoin(baseURL string, paths ...string) (string, error) {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return "", err
-	}
-
-	// 拼接路径部分
-	for _, p := range paths {
-		base.Path = path.Join(base.Path, p)
-	}
-
-	// 确保路径以 / 结尾
-	if strings.HasSuffix(paths[len(paths)-1], "/") {
-		base.Path += "/"
-	}
-
-	return base.String(), nil
-}
-
-func GetCMDBAPIURL() string {
-	apiUrl := os.Getenv("CMDB_API_URL")
-	return apiUrl
+func getCMDBAPIURL() string {
+	return global.ClientSetting.CMDB_API_URL
 }

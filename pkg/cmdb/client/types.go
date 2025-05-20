@@ -68,6 +68,22 @@ func (o ObjectAlreadyExistError) Error() string {
 	return msg
 }
 
+type ObjectReferencedError struct {
+	path      string
+	kind      string
+	name      string
+	namespace string
+	message   string
+}
+
+func (o ObjectReferencedError) Error() string {
+	msg := fmt.Sprintf("%s/%s has been referenced error %s at %s", o.kind, o.name, o.message, o.path)
+	if o.namespace != "" {
+		msg = fmt.Sprintf("%s/%s", o.namespace, msg)
+	}
+	return msg
+}
+
 type ServerError struct {
 	path       string
 	statusCode int

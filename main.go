@@ -1,7 +1,7 @@
 package main
 
 import (
-	"goTool/pkg/cmd"
+	"goTool/pkg/cmdb/cmd"
 )
 
 func main() {

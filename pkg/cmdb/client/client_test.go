@@ -21,14 +21,14 @@ func testCreateResource(t *testing.T, o Object, filePath string) {
 	namespace, _ := metadata["namespace"].(string)
 	obj, err := o.Create(name, namespace, r)
 	if err != nil {
-		assert.IsType(t, ObjectAlreadyExistError{}, err)
+		assert.IsType(t, ResourceAlreadyExistError{}, err)
 	} else {
 		assert.NoError(t, err)
 		assert.IsType(t, map[string]any{}, obj)
 	}
 
 	_, err = o.Create(name, namespace, r)
-	assert.IsType(t, ObjectAlreadyExistError{}, err)
+	assert.IsType(t, ResourceAlreadyExistError{}, err)
 }
 
 func testReadResource(t *testing.T, o Object, name, namespace string) {
@@ -81,7 +81,7 @@ func testDeleteResource(t *testing.T, o Object, name, namespace string) {
 	assert.NoError(t, err)
 
 	_, err = o.Delete(name, namespace)
-	assert.IsType(t, ObjectNotFoundError{}, err)
+	assert.IsType(t, ResourceNotFoundError{}, err)
 }
 
 func TestCreateResource(t *testing.T) {

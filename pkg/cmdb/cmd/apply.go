@@ -29,8 +29,7 @@ func applyCmdHandle(c *cobra.Command) {
 	var resources []client.Object
 
 	if info, err := os.Stat(filePath); err != nil {
-		panic(err)
-
+		CheckError(err)
 	} else {
 		if info.IsDir() {
 			resources, err = parseResourceFromDir(filePath)
@@ -39,9 +38,7 @@ func applyCmdHandle(c *cobra.Command) {
 			resource, err = parseResourceFromFile(filePath)
 			resources = append(resources, resource)
 		}
-		if err != nil {
-			panic(err)
-		}
+		CheckError(err)
 	}
 	applyResources(resources)
 }
@@ -103,8 +100,8 @@ func applyResource(r client.Object) {
 	_, err := r.Read(metadata.Name, metadata.Namespace, 0)
 	switch err.(type) {
 	default:
-		panic(err)
-	case client.ObjectNotFoundError:
+		CheckError(err)
+	case client.ResourceNotFoundError:
 		// 不存在，则创建
 		createUpdateResource(r, "CREATE")
 	case nil:
@@ -114,24 +111,22 @@ func applyResource(r client.Object) {
 }
 
 func createUpdateResource(r client.Object, action string) {
-	// TODO: 错误消息格式化
 	var jsonObj, result map[string]any
 	var err error
 
 	metadata := r.GetMetadata()
 
-	if err = structToMap(r, &jsonObj); err != nil {
-		panic(err)
-	}
+	err = structToMap(r, &jsonObj)
+	CheckError(err)
+
 	switch action {
 	case "CREATE":
 		result, err = r.Create(metadata.Name, metadata.Namespace, jsonObj)
 	case "UPDATE":
 		result, err = r.Update(metadata.Name, metadata.Namespace, jsonObj)
 	}
-	if err != nil {
-		panic(err)
-	}
+	CheckError(err)
+
 	lkind := client.LowerKind(r)
 	if result == nil {
 		fmt.Printf("%v/%v unchanged\n", lkind, metadata.Name)

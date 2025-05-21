@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -12,14 +11,6 @@ import (
 	"strings"
 	"time"
 )
-
-type MapKeyPathError struct {
-	keyPath string
-}
-
-func (e MapKeyPathError) Error() string {
-	return fmt.Sprintf("Map path %s doesn't exist", e.keyPath)
-}
 
 // 生成随机字符串
 func RandomString(length int) string {

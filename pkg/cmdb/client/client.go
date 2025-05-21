@@ -222,17 +222,17 @@ func fmtCURDError(r Object, name, namespace, body string, statusCode int, err er
 	default:
 		return err
 	case 422:
-		return ObjectValidateError{apiUrl, lkind, name, namespace, body}
+		return ResourceValidateError{apiUrl, lkind, name, namespace, body}
 	case 400:
-		if ok, _ := regexp.MatchString("referenced by", body); ok {
-			return ObjectReferencedError{apiUrl, lkind, name, namespace, body}
+		if ok, _ := regexp.MatchString("reference", body); ok {
+			return ResourceReferencedError{apiUrl, lkind, name, namespace, body}
 		}
 		if ok, _ := regexp.MatchString("already exist", body); ok {
-			return ObjectAlreadyExistError{apiUrl, lkind, name, namespace, body}
+			return ResourceAlreadyExistError{apiUrl, lkind, name, namespace, body}
 		}
 		return err
 	case 404:
-		return ObjectNotFoundError{apiUrl, lkind, name, namespace}
+		return ResourceNotFoundError{apiUrl, lkind, name, namespace}
 	}
 }
 

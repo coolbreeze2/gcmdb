@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"goTool/pkg/cmdb/client"
-	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -45,13 +44,10 @@ func getDeleteHandle(c *cobra.Command, r client.Object, args []string) {
 	for index := range args {
 		name = args[index]
 		if _, err = r.Delete(name, namespace); err != nil {
-			log.Fatalf("Error from server: %v", err)
+			CheckError(err)
 		} else {
-			log.Printf("%v %v deleted.", client.LowerKind(r), name)
+			fmt.Printf("%v %v deleted.", client.LowerKind(r), name)
 		}
-	}
-	if err != nil {
-		panic(err)
 	}
 }
 

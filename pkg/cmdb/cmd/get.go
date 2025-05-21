@@ -57,9 +57,7 @@ func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
 		resources, err = r.List(opt)
 	}
 
-	if err != nil {
-		panic(err)
-	}
+	CheckError(err)
 
 	switch outputFmt {
 	default:
@@ -78,8 +76,8 @@ func addGetFlags(c *cobra.Command) {
 	c.Flags().StringP("output", "o", "simple", "page number")
 	c.Flags().Int64P("page", "p", 0, "page number")
 	c.Flags().Int64P("limit", "s", 0, "limit size, 0 is no limit")
-	c.Flags().StringP("selector", "l", "", "specify name")
-	c.Flags().String("field-selector", "", "specify name")
+	c.Flags().StringP("selector", "l", "", "label selector")
+	c.Flags().String("field-selector", "", "field selector")
 }
 
 func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {

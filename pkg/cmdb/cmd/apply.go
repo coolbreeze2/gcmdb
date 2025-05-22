@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"goTool/pkg/cmdb/client"
 	"os"
+	"path"
+	"sort"
 
 	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
@@ -40,6 +42,8 @@ func applyCmdHandle(c *cobra.Command) {
 		}
 		CheckError(err)
 	}
+	checkResourceTypeExist(resources)
+	sortResource(resources)
 	applyResources(resources)
 }
 
@@ -47,14 +51,15 @@ func addApplyFlags(c *cobra.Command) {
 	c.Flags().StringP("filename", "f", "", "File or directory name")
 }
 
-func parseResourceFromDir(path string) ([]client.Object, error) {
+func parseResourceFromDir(dirPath string) ([]client.Object, error) {
 	var objs []client.Object
-	entries, err := os.ReadDir(path)
+	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
 	}
 	for _, e := range entries {
-		if obj, err := parseResourceFromFile(e.Name()); err == nil {
+		filePath := path.Join(dirPath, e.Name())
+		if obj, err := parseResourceFromFile(filePath); err == nil {
 			objs = append(objs, obj)
 		} else {
 			return nil, err
@@ -72,21 +77,47 @@ func parseResourceFromFile(path string) (client.Object, error) {
 	if err = yaml.Unmarshal(file, &jsonObj); err != nil {
 		return nil, err
 	}
-	kind := jsonObj["kind"]
+	kind := jsonObj["kind"].(string)
 
-	var o client.Object
-	switch kind {
-	case "Project":
-		o = &client.Project{}
-	case "App":
-		o = &client.App{}
-	}
+	o, err := GetResourceKindByString(kind)
+	CheckError(err)
 
 	if err := yaml.Unmarshal(file, o); err != nil {
 		return nil, err
 	}
 
 	return o, nil
+}
+
+// 检查资源类型是否存在
+func checkResourceTypeExist(resources []client.Object) error {
+	for _, v := range resources {
+		kind := v.GetKind()
+		exist := false
+		for _, k := range client.ResourceOrder {
+			if k == kind {
+				exist = true
+			}
+		}
+		if !exist {
+			return client.ResourceTypeError{Kind: kind}
+		}
+	}
+	return nil
+}
+
+// 根据资源优先级排序
+func sortResource(resources []client.Object) error {
+	orders := map[string]int{}
+	for i, v := range client.ResourceOrder {
+		orders[v] = i
+	}
+	sort.Slice(resources, func(i, j int) bool {
+		a := orders[resources[i].GetKind()]
+		b := orders[resources[j].GetKind()]
+		return a < b
+	})
+	return nil
 }
 
 func applyResources(resources []client.Object) {

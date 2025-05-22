@@ -3,3 +3,5 @@
 .idea/
 NERD_tree*
 cmctl
+.coverage.out
+.coverage.html

@@ -16,21 +16,24 @@ var deleteCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	deleteCmd.AddCommand(newDeleteCommand(client.NewProject()))
-	deleteCmd.AddCommand(newDeleteCommand(client.NewApp()))
+func InitMutilDeleteCmd(objs []client.Object) {
+	for _, o := range objs {
+		getCmd.AddCommand(newDeleteCmd(o))
+	}
 	RootCmd.AddCommand(deleteCmd)
 }
 
-func newDeleteCommand(r client.Object) *cobra.Command {
+func newDeleteCmd(r client.Object) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("%s <name>", kind),
-		Short: fmt.Sprintf("Delete %s", kind),
+		Use:   fmt.Sprintf("%s <name>...", kind),
+		Short: kind,
+		Long:  fmt.Sprintf("Delete %s", kind),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(c *cobra.Command, args []string) {
 			getDeleteHandle(c, r, args)
 		},
+		ValidArgsFunction: CompleteFunc,
 	}
 	addDeleteFlags(cmd)
 	return cmd
@@ -46,7 +49,7 @@ func getDeleteHandle(c *cobra.Command, r client.Object, args []string) {
 		if _, err = r.Delete(name, namespace); err != nil {
 			CheckError(err)
 		} else {
-			fmt.Printf("%v %v deleted.", client.LowerKind(r), name)
+			fmt.Printf("%v %v deleted.\n", client.LowerKind(r), name)
 		}
 	}
 }

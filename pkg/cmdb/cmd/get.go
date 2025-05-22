@@ -20,21 +20,24 @@ var getCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	getCmd.AddCommand(newGetCommand(client.NewProject()))
-	getCmd.AddCommand(newGetCommand(client.NewApp()))
+func InitMutilGetCmd(objs []client.Object) {
+	for _, o := range objs {
+		getCmd.AddCommand(newGetCmd(o))
+	}
 	RootCmd.AddCommand(getCmd)
 }
 
-func newGetCommand(r client.Object) *cobra.Command {
+func newGetCmd(r client.Object) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
-		Short: fmt.Sprintf("Get %s", kind),
+		Short: kind,
+		Long:  fmt.Sprintf("Get %s", kind),
 		Args:  cobra.RangeArgs(0, 1),
 		Run: func(c *cobra.Command, args []string) {
 			getCmdHandle(c, r, args)
 		},
+		ValidArgsFunction: CompleteFunc,
 	}
 	addGetFlags(GetCmd)
 	return GetCmd

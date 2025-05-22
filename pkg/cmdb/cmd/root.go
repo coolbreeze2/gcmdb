@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"goTool/pkg/cmdb/client"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -23,4 +24,13 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func init() {
+	objects := []client.Object{
+		client.NewProject(),
+		client.NewApp(),
+	}
+	InitMutilGetCmd(objects)
+	InitMutilDeleteCmd(objects)
 }

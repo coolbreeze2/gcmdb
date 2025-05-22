@@ -74,8 +74,6 @@ func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
 }
 
 func addGetFlags(c *cobra.Command) {
-	// TODO: namespace 应为全局参数
-	c.Flags().StringP("namespace", "n", "", "namespace name")
 	c.Flags().StringP("output", "o", "simple", "page number")
 	c.Flags().Int64P("page", "p", 0, "page number")
 	c.Flags().Int64P("limit", "s", 0, "limit size, 0 is no limit")
@@ -84,7 +82,7 @@ func addGetFlags(c *cobra.Command) {
 }
 
 func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
-	namespace, _ := c.Flags().GetString("namespace")
+	namespace, _ := c.Parent().PersistentFlags().GetString("namespace")
 	page, _ := c.Flags().GetInt64("page")
 	limit, _ := c.Flags().GetInt64("limit")
 	selector, _ := c.Flags().GetString("selector")

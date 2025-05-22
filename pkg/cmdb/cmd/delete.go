@@ -18,7 +18,7 @@ var deleteCmd = &cobra.Command{
 
 func InitMutilDeleteCmd(objs []client.Object) {
 	for _, o := range objs {
-		getCmd.AddCommand(newDeleteCmd(o))
+		deleteCmd.AddCommand(newDeleteCmd(o))
 	}
 	RootCmd.AddCommand(deleteCmd)
 }
@@ -35,12 +35,11 @@ func newDeleteCmd(r client.Object) *cobra.Command {
 		},
 		ValidArgsFunction: CompleteFunc,
 	}
-	addDeleteFlags(cmd)
 	return cmd
 }
 
 func getDeleteHandle(c *cobra.Command, r client.Object, args []string) {
-	namespace, _ := c.Flags().GetString("namespace")
+	namespace, _ := c.Parent().PersistentFlags().GetString("namespace")
 	var err error
 	var name string
 
@@ -52,9 +51,4 @@ func getDeleteHandle(c *cobra.Command, r client.Object, args []string) {
 			fmt.Printf("%v %v deleted.\n", client.LowerKind(r), name)
 		}
 	}
-}
-
-func addDeleteFlags(c *cobra.Command) {
-	// TODO: namespace 应为全局参数
-	c.Flags().StringP("namespace", "n", "", "namespace name")
 }

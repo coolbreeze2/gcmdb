@@ -77,7 +77,7 @@ func testUpdateResource(t *testing.T, o Object, name, namespace, updatePath stri
 
 func testDeleteResource(t *testing.T, o Object, name, namespace string) {
 	obj, err := o.Delete(name, namespace)
-	assert.Equal(t, 0, len(obj))
+	assert.Nil(t, obj)
 	assert.NoError(t, err)
 
 	_, err = o.Delete(name, namespace)

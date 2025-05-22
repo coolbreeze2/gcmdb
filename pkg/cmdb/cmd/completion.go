@@ -13,11 +13,11 @@ func CompleteFunc(cmd *cobra.Command, args []string, toComplete string) ([]strin
 	p := cmd.Parent()
 	completionCmd := p.Use == "get" || p.Use == "delete"
 	if p != nil && completionCmd {
+		namespace, _ := p.PersistentFlags().GetString("namespace")
 		if p.Use == "get" && len(args) != 0 {
 			return options, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 		}
 		kind := cmd.Short
-		namespace := "" // TODO:
 		names := completeName(kind, namespace)
 		for _, name := range names {
 			if len(args) == 0 || !slices.Contains(args, name) {

@@ -143,7 +143,7 @@ func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 
 	srespBody := string(respBody)
 	statusCode := response.StatusCode
-	if statusCode >= 400 && statusCode != 404 {
+	if statusCode >= 400 {
 		err = ServerError{url_.String(), statusCode, srespBody}
 		return srespBody, response.StatusCode, err
 	}

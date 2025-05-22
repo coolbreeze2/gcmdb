@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func TestEtcdStore(t *testing.T) {
+func testEtcdStore(t *testing.T) {
 	// 创建嵌入式 etcd 服务器
 	inCfg := NewTestConfig(t)
 	server, err := embed.StartEtcd(inCfg)

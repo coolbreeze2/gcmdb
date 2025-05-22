@@ -34,7 +34,6 @@ func NewListOptions(
 // 创建资源
 func CreateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
 	var url, body string
-	var statusCode int
 	var err error
 	var mapData map[string]any
 
@@ -43,9 +42,9 @@ func CreateResource(r Object, name string, namespace string, resource map[string
 	}
 	removeResourceManageFields(resource)
 
-	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
+	body, _, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
 
-	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
+	if err = fmtCURDError(r, name, namespace, body, err); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +69,7 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 
 	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
 
-	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
+	if err = fmtCURDError(r, name, namespace, body, err); err != nil {
 		return nil, err
 	}
 
@@ -87,7 +86,6 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 // 查询指定名称的资源
 func ReadResource(r Object, name string, namespace string, revision int64) (map[string]any, error) {
 	var url, body string
-	var statusCode int
 	var err error
 	var mapData map[string]any
 
@@ -96,9 +94,9 @@ func ReadResource(r Object, name string, namespace string, revision int64) (map[
 	}
 
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
-	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
+	body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
 
-	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
+	if err = fmtCURDError(r, name, namespace, body, err); err != nil {
 		return nil, err
 	}
 
@@ -111,7 +109,6 @@ func ReadResource(r Object, name string, namespace string, revision int64) (map[
 // 删除资源指定名称的资源
 func DeleteResource(r Object, name, namespace string) (map[string]any, error) {
 	var url, body string
-	var statusCode int
 	var err error
 	var mapData map[string]any
 
@@ -119,14 +116,10 @@ func DeleteResource(r Object, name, namespace string) (map[string]any, error) {
 		return nil, err
 	}
 
-	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "DELETE", Url: url})
+	body, _, err = DoHttpRequest(HttpRequestArgs{Method: "DELETE", Url: url})
 
-	if err = fmtCURDError(r, name, namespace, body, statusCode, err); err != nil {
+	if err = fmtCURDError(r, name, namespace, body, err); err != nil {
 		return nil, err
-	}
-
-	if statusCode == 204 {
-		return mapData, nil
 	}
 
 	return mapData, nil
@@ -215,25 +208,25 @@ func unMarshalStringToArrayMap(body string) ([]map[string]any, error) {
 }
 
 // 格式化 CRUD 的错误信息
-func fmtCURDError(r Object, name, namespace, body string, statusCode int, err error) error {
-	apiUrl := getCMDBAPIURL()
+func fmtCURDError(r Object, name, namespace, body string, err error) error {
 	lkind := LowerKind(r)
-	switch statusCode {
-	default:
-		return err
-	case 422:
-		return ResourceValidateError{apiUrl, lkind, name, namespace, body}
-	case 400:
-		if ok, _ := regexp.MatchString("reference", body); ok {
-			return ResourceReferencedError{apiUrl, lkind, name, namespace, body}
+	switch e := err.(type) {
+	case ServerError:
+		switch e.StatusCode {
+		case 422:
+			return ResourceValidateError{e.Path, lkind, name, namespace, body}
+		case 400:
+			if ok, _ := regexp.MatchString("reference", body); ok {
+				return ResourceReferencedError{e.Path, lkind, name, namespace, body}
+			}
+			if ok, _ := regexp.MatchString("already exist", body); ok {
+				return ResourceAlreadyExistError{e.Path, lkind, name, namespace, body}
+			}
+		case 404:
+			return ResourceNotFoundError{e.Path, lkind, name, namespace}
 		}
-		if ok, _ := regexp.MatchString("already exist", body); ok {
-			return ResourceAlreadyExistError{apiUrl, lkind, name, namespace, body}
-		}
-		return err
-	case 404:
-		return ResourceNotFoundError{apiUrl, lkind, name, namespace}
 	}
+	return err
 }
 
 // 更新/查询/读取 的 URL

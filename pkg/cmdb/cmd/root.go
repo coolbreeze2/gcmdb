@@ -26,7 +26,13 @@ func Execute() {
 	}
 }
 
+func addPersistentFlags() {
+	RootCmd.PersistentFlags().StringP("namespace", "n", "", "resource namespace")
+}
+
 func init() {
+	addPersistentFlags()
+
 	objects := []client.Object{
 		client.NewProject(),
 		client.NewApp(),

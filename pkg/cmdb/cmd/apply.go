@@ -68,8 +68,8 @@ func parseResourceFromDir(dirPath string) ([]client.Object, error) {
 	return objs, nil
 }
 
-func parseResourceFromFile(path string) (client.Object, error) {
-	file, err := os.ReadFile(path)
+func parseResourceFromFile(filePath string) (client.Object, error) {
+	file, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +82,9 @@ func parseResourceFromFile(path string) (client.Object, error) {
 	o, err := GetResourceKindByString(kind)
 	CheckError(err)
 
-	if err := yaml.Unmarshal(file, o); err != nil {
-		return nil, err
+	// 不允许设置额外字段
+	if err := yaml.UnmarshalWithOptions(file, o, yaml.DisallowUnknownField()); err != nil {
+		return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
 	}
 
 	return o, nil

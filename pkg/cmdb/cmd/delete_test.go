@@ -8,10 +8,12 @@ import (
 
 func TestDeleteResource(t *testing.T) {
 	cases := [][]string{
-		{"apply", "-f", "../example/files/project.yaml"},
-		{"apply", "-f", "../example/files/app.yaml"},
+		{"apply", "-f", "../example/files"},
 		{"delete", "app", "go-app"},
 		{"delete", "project", "go-devops"},
+		{"delete", "scm", "gitlab-test"},
+		{"delete", "datacenter", "test"},
+		{"delete", "secret", "test"},
 	}
 	for i := range cases {
 		RootCmd.SetArgs(cases[i])

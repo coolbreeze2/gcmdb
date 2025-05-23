@@ -1,0 +1,8 @@
+apiVersion: v1alpha
+kind: Datacenter
+metadata:
+  name: test
+  labels: {}
+spec:
+  provider: alibaba-cloud
+  privateKey: test

@@ -1,0 +1,9 @@
+apiVersion: v1alpha
+kind: SCM
+metadata:
+  name: gitlab-test
+  labels: {}
+spec:
+  datacenter: test
+  url: https://gitlab.dev.com
+  service: gitlab

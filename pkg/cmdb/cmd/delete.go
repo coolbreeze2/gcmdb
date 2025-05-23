@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
 	"strings"
 
@@ -16,14 +17,14 @@ var deleteCmd = &cobra.Command{
 	},
 }
 
-func InitMutilDeleteCmd(objs []client.Object) {
+func InitMutilDeleteCmd(objs []cmdb.Resource) {
 	for _, o := range objs {
 		deleteCmd.AddCommand(newDeleteCmd(o))
 	}
 	RootCmd.AddCommand(deleteCmd)
 }
 
-func newDeleteCmd(r client.Object) *cobra.Command {
+func newDeleteCmd(r cmdb.Resource) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s <name>...", kind),
@@ -38,14 +39,15 @@ func newDeleteCmd(r client.Object) *cobra.Command {
 	return cmd
 }
 
-func getDeleteHandle(c *cobra.Command, r client.Object, args []string) {
+func getDeleteHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 	namespace, _ := c.Parent().PersistentFlags().GetString("namespace")
 	var err error
 	var name string
 
+	cli := client.DefaultCMDBClient
 	for index := range args {
 		name = args[index]
-		if _, err = r.Delete(name, namespace); err != nil {
+		if _, err = cli.DeleteResource(r, name, namespace); err != nil {
 			CheckError(err)
 		} else {
 			fmt.Printf("%v %v deleted.\n", client.LowerKind(r), name)

@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
 	"os"
 	"strings"
@@ -20,14 +21,14 @@ var getCmd = &cobra.Command{
 	},
 }
 
-func InitMutilGetCmd(objs []client.Object) {
+func InitMutilGetCmd(objs []cmdb.Resource) {
 	for _, o := range objs {
 		getCmd.AddCommand(newGetCmd(o))
 	}
 	RootCmd.AddCommand(getCmd)
 }
 
-func newGetCmd(r client.Object) *cobra.Command {
+func newGetCmd(r cmdb.Resource) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
@@ -43,7 +44,7 @@ func newGetCmd(r client.Object) *cobra.Command {
 	return GetCmd
 }
 
-func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
+func getCmdHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 	outputFmt, _ := c.Flags().GetString("output")
 	revision, _ := c.Flags().GetInt64("revision")
 	opt := parseListOptionsFlags(c)
@@ -51,13 +52,14 @@ func getCmdHandle(c *cobra.Command, r client.Object, args []string) {
 	var name string
 	var resources []map[string]any
 
+	cli := client.DefaultCMDBClient
 	if len(args) == 1 {
 		name = args[0]
 		var resource map[string]any
-		resource, err = r.Read(name, opt.Namespace, revision)
+		resource, err = cli.ReadResource(r, name, opt.Namespace, revision)
 		resources = append(resources, resource)
 	} else {
-		resources, err = r.List(opt)
+		resources, err = cli.ListResource(r, opt)
 	}
 
 	CheckError(err)

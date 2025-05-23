@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goTool/global"
+	"goTool/pkg/cmdb"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,12 +33,12 @@ func NewListOptions(
 }
 
 // 创建资源
-func CreateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
+func (c CMDBClient) CreateResource(r cmdb.Resource, name string, namespace string, resource map[string]any) (map[string]any, error) {
 	var url, body string
 	var err error
 	var mapData map[string]any
 
-	if url, err = getCreateListResourceUrl(r, namespace); err != nil {
+	if url, err = c.getCreateListResourceUrl(r, namespace); err != nil {
 		return nil, err
 	}
 	removeResourceManageFields(resource)
@@ -56,13 +57,13 @@ func CreateResource(r Object, name string, namespace string, resource map[string
 }
 
 // 更新资源
-func UpdateResource(r Object, name string, namespace string, resource map[string]any) (map[string]any, error) {
+func (c CMDBClient) UpdateResource(r cmdb.Resource, name string, namespace string, resource map[string]any) (map[string]any, error) {
 	var url, body string
 	var statusCode int
 	var err error
 	var mapData map[string]any
 
-	if url, err = getURDResourceUrl(r, name, namespace); err != nil {
+	if url, err = c.getURDResourceUrl(r, name, namespace); err != nil {
 		return nil, err
 	}
 	removeResourceManageFields(resource)
@@ -84,12 +85,12 @@ func UpdateResource(r Object, name string, namespace string, resource map[string
 }
 
 // 查询指定名称的资源
-func ReadResource(r Object, name string, namespace string, revision int64) (map[string]any, error) {
+func (c CMDBClient) ReadResource(r cmdb.Resource, name string, namespace string, revision int64) (map[string]any, error) {
 	var url, body string
 	var err error
 	var mapData map[string]any
 
-	if url, err = getURDResourceUrl(r, name, namespace); err != nil {
+	if url, err = c.getURDResourceUrl(r, name, namespace); err != nil {
 		return nil, err
 	}
 
@@ -107,12 +108,12 @@ func ReadResource(r Object, name string, namespace string, revision int64) (map[
 }
 
 // 删除资源指定名称的资源
-func DeleteResource(r Object, name, namespace string) (map[string]any, error) {
+func (c CMDBClient) DeleteResource(r cmdb.Resource, name, namespace string) (map[string]any, error) {
 	var url, body string
 	var err error
 	var mapData map[string]any
 
-	if url, err = getURDResourceUrl(r, name, namespace); err != nil {
+	if url, err = c.getURDResourceUrl(r, name, namespace); err != nil {
 		return nil, err
 	}
 
@@ -126,12 +127,12 @@ func DeleteResource(r Object, name, namespace string) (map[string]any, error) {
 }
 
 // 查询多个资源
-func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
+func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[string]any, error) {
 	var url, body string
 	var err error
 	var mapData []map[string]any
 
-	if url, err = getCreateListResourceUrl(r, opt.Namespace); err != nil {
+	if url, err = c.getCreateListResourceUrl(r, opt.Namespace); err != nil {
 		return nil, err
 	}
 
@@ -152,12 +153,12 @@ func ListResource(r Object, opt *ListOptions) ([]map[string]any, error) {
 }
 
 // 查询指定类型资源的总数 count
-func CountResource(r Object, namespace string) (int, error) {
+func (c CMDBClient) CountResource(r cmdb.Resource, namespace string) (int, error) {
 	var url, body string
 	var err error
 	var count int
 
-	if url, err = getCountResourceUrl(r); err != nil {
+	if url, err = c.getCountResourceUrl(r); err != nil {
 		return count, err
 	}
 	query := map[string]string{"namespace": namespace}
@@ -171,12 +172,12 @@ func CountResource(r Object, namespace string) (int, error) {
 }
 
 // 查询指定类型资源的所有名称 names
-func GetResourceNames(r Object, namespace string) ([]string, error) {
+func (c CMDBClient) GetResourceNames(r cmdb.Resource, namespace string) ([]string, error) {
 	var url, body string
 	var err error
 	var names []string
 
-	if url, err = getResourceNamesUrl(r); err != nil {
+	if url, err = c.getResourceNamesUrl(r); err != nil {
 		return names, err
 	}
 	query := map[string]string{"namespace": namespace}
@@ -208,7 +209,7 @@ func unMarshalStringToArrayMap(body string) ([]map[string]any, error) {
 }
 
 // 格式化 CRUD 的错误信息
-func fmtCURDError(r Object, name, namespace, body string, err error) error {
+func fmtCURDError(r cmdb.Resource, name, namespace, body string, err error) error {
 	lkind := LowerKind(r)
 	switch e := err.(type) {
 	case ServerError:
@@ -230,32 +231,39 @@ func fmtCURDError(r Object, name, namespace, body string, err error) error {
 }
 
 // 更新/查询/读取 的 URL
-func getURDResourceUrl(r Object, name, namespace string) (string, error) {
+func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) (string, error) {
 	if namespace == "" {
-		return UrlJoin(getCMDBAPIURL(), LowerKind(r), name)
+		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), name)
 	} else {
-		return UrlJoin(getCMDBAPIURL(), LowerKind(r), namespace, name)
+		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), namespace, name)
 	}
 }
 
 // 创建/查询列表 的 URL
-func getCreateListResourceUrl(r Object, namespace string) (string, error) {
+func (c CMDBClient) getCreateListResourceUrl(r cmdb.Resource, namespace string) (string, error) {
 	if namespace == "" {
-		return UrlJoin(getCMDBAPIURL(), LowerKind(r), "/")
+		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 	} else {
-		return UrlJoin(getCMDBAPIURL(), LowerKind(r), namespace, "/")
+		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), namespace, "/")
 	}
 }
 
-func getCountResourceUrl(r Object) (string, error) {
-	return UrlJoin(getCMDBAPIURL(), LowerKind(r), "count", "/")
+func (c CMDBClient) getCountResourceUrl(r cmdb.Resource) (string, error) {
+	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "count", "/")
 }
 
-func getResourceNamesUrl(r Object) (string, error) {
-	return UrlJoin(getCMDBAPIURL(), LowerKind(r), "names", "/")
+func (c CMDBClient) getResourceNamesUrl(r cmdb.Resource) (string, error) {
+	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "names", "/")
 }
 
-func LowerKind(r Object) string {
+func (c CMDBClient) getCMDBAPIURL() string {
+	if c.ApiUrl != "" {
+		return c.ApiUrl
+	}
+	return global.ClientSetting.CMDB_API_URL
+}
+
+func LowerKind(r cmdb.Resource) string {
 	return strings.ToLower(r.GetKind()) + "s"
 }
 
@@ -296,8 +304,4 @@ func removeResourceManageFields(r map[string]any) {
 		delete(metadata, "namespace")
 	}
 	r["metadata"] = metadata
-}
-
-func getCMDBAPIURL() string {
-	return global.ClientSetting.CMDB_API_URL
 }

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"goTool/pkg/cmdb/client"
+	"goTool/pkg/cmdb"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -33,9 +33,12 @@ func addPersistentFlags() {
 func init() {
 	addPersistentFlags()
 
-	objects := []client.Object{
-		client.NewProject(),
-		client.NewApp(),
+	objects := []cmdb.Resource{
+		cmdb.NewSecret(),
+		cmdb.NewSCM(),
+		cmdb.NewDatacenter(),
+		cmdb.NewProject(),
+		cmdb.NewApp(),
 	}
 	InitMutilGetCmd(objects)
 	InitMutilDeleteCmd(objects)

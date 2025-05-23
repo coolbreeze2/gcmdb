@@ -24,6 +24,16 @@ var ResourceOrder = [...]string{
 	"DatabaseService",
 }
 
+var DefaultCMDBClient = &CMDBClient{}
+
+func NewCMDBClient(apiUrl string) *CMDBClient {
+	return &CMDBClient{ApiUrl: apiUrl}
+}
+
+type CMDBClient struct {
+	ApiUrl string
+}
+
 type ListOptions struct {
 	Namespace     string            `json:"namespace"`
 	Page          int64             `json:"page"`

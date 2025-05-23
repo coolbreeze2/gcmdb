@@ -3,11 +3,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
 	"os"
 	"path"
 	"sort"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +30,7 @@ func init() {
 
 func applyCmdHandle(c *cobra.Command) {
 	filePath, _ := c.Flags().GetString("filename")
-	var resources []client.Object
+	var resources []cmdb.Resource
 
 	if info, err := os.Stat(filePath); err != nil {
 		CheckError(err)
@@ -36,13 +38,13 @@ func applyCmdHandle(c *cobra.Command) {
 		if info.IsDir() {
 			resources, err = parseResourceFromDir(filePath)
 		} else {
-			var resource client.Object
+			var resource cmdb.Resource
 			resource, err = parseResourceFromFile(filePath)
 			resources = append(resources, resource)
 		}
 		CheckError(err)
 	}
-	checkResourceTypeExist(resources)
+	CheckError(checkResourceTypeExist(resources))
 	sortResource(resources)
 	applyResources(resources)
 }
@@ -51,8 +53,8 @@ func addApplyFlags(c *cobra.Command) {
 	c.Flags().StringP("filename", "f", "", "File or directory name")
 }
 
-func parseResourceFromDir(dirPath string) ([]client.Object, error) {
-	var objs []client.Object
+func parseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {
+	var objs []cmdb.Resource
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -68,7 +70,8 @@ func parseResourceFromDir(dirPath string) ([]client.Object, error) {
 	return objs, nil
 }
 
-func parseResourceFromFile(filePath string) (client.Object, error) {
+func parseResourceFromFile(filePath string) (cmdb.Resource, error) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
 	file, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -87,11 +90,15 @@ func parseResourceFromFile(filePath string) (client.Object, error) {
 		return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
 	}
 
+	if err = validate.Struct(o); err != nil {
+		return nil, fmt.Errorf("%s when parse file %s", err.Error(), filePath)
+	}
+
 	return o, nil
 }
 
 // 检查资源类型是否存在
-func checkResourceTypeExist(resources []client.Object) error {
+func checkResourceTypeExist(resources []cmdb.Resource) error {
 	for _, v := range resources {
 		kind := v.GetKind()
 		exist := false
@@ -108,7 +115,7 @@ func checkResourceTypeExist(resources []client.Object) error {
 }
 
 // 根据资源优先级排序
-func sortResource(resources []client.Object) error {
+func sortResource(resources []cmdb.Resource) error {
 	orders := map[string]int{}
 	for i, v := range client.ResourceOrder {
 		orders[v] = i
@@ -121,15 +128,16 @@ func sortResource(resources []client.Object) error {
 	return nil
 }
 
-func applyResources(resources []client.Object) {
+func applyResources(resources []cmdb.Resource) {
 	for i := range resources {
 		applyResource(resources[i])
 	}
 }
 
-func applyResource(r client.Object) {
-	metadata := r.GetMetadata()
-	_, err := r.Read(metadata.Name, metadata.Namespace, 0)
+func applyResource(r cmdb.Resource) {
+	metadata := r.GetMeta()
+	cli := client.DefaultCMDBClient
+	_, err := cli.ReadResource(r, metadata.Name, metadata.Namespace, 0)
 	switch err.(type) {
 	default:
 		CheckError(err)
@@ -142,20 +150,22 @@ func applyResource(r client.Object) {
 	}
 }
 
-func createUpdateResource(r client.Object, action string) {
+func createUpdateResource(r cmdb.Resource, action string) {
 	var jsonObj, result map[string]any
 	var err error
 
-	metadata := r.GetMetadata()
+	metadata := r.GetMeta()
 
 	err = structToMap(r, &jsonObj)
 	CheckError(err)
 
+	cli := client.DefaultCMDBClient
+
 	switch action {
 	case "CREATE":
-		result, err = r.Create(metadata.Name, metadata.Namespace, jsonObj)
+		result, err = cli.CreateResource(r, metadata.Name, metadata.Namespace, jsonObj)
 	case "UPDATE":
-		result, err = r.Update(metadata.Name, metadata.Namespace, jsonObj)
+		result, err = cli.UpdateResource(r, metadata.Name, metadata.Namespace, jsonObj)
 	}
 	CheckError(err)
 

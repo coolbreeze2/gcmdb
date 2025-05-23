@@ -9,6 +9,15 @@ import (
 func TestGetResource(t *testing.T) {
 	cases := [][]string{
 		{"apply", "-f", "../example/files"},
+		{"get", "scm"},
+		{"get", "scm", "-o", "yaml"},
+		{"get", "scm", "gitlab-test"},
+		{"get", "datacenter"},
+		{"get", "datacenter", "-o", "yaml"},
+		{"get", "datacenter", "test"},
+		{"get", "secret"},
+		{"get", "secret", "-o", "yaml"},
+		{"get", "secret", "test"},
 		{"get", "project"},
 		{"get", "project", "go-devops"},
 		{"get", "project", "-o", "yaml"},

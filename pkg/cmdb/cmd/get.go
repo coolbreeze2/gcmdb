@@ -13,6 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type customColumn struct {
+	name, path string
+}
+
+var extraCustomColumn = map[string][]customColumn{
+	"app":        {customColumn{"PROJECT", "spec.project"}, customColumn{"SCM", "spec.scm.name"}},
+	"datacenter": {customColumn{"PROVIDER", "spec.provider"}},
+	"project":    {customColumn{"NAME_IN_CHAIN", "spec.nameInChain"}},
+	"scm":        {customColumn{"DATACENTER", "spec.datacenter"}, customColumn{"URL", "spec.url"}, customColumn{"SERVICE", "spec.service"}},
+}
+
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get resources",
@@ -66,12 +77,11 @@ func getCmdHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 
 	switch outputFmt {
 	default:
-		outputFmtSimple(resources)
+		outputFmtSimple(resources, r)
 	case "json":
 		outputFmtJson(resources)
 	case "yaml":
 		outputFmtYaml(resources)
-
 	}
 }
 
@@ -99,8 +109,18 @@ func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
 	return opt
 }
 
-func outputFmtSimple(resources []map[string]interface{}) {
-	tableHeader := []string{"NAME", "CREATED_AT"}
+func outputFmtSimple(resources []map[string]any, r cmdb.Resource) {
+	tableHeader := []string{"NAME"}
+
+	// 不同 Resource 支持自定义 Column
+	extraColumns, hasExCol := extraCustomColumn[strings.ToLower(r.GetKind())]
+	if hasExCol {
+		for _, c := range extraColumns {
+			tableHeader = append(tableHeader, c.name)
+		}
+	}
+	tableHeader = append(tableHeader, "CREATED_AT")
+
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(tableHeader)
 	table.SetBorder(false)
@@ -109,21 +129,28 @@ func outputFmtSimple(resources []map[string]interface{}) {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	for _, r := range resources {
-		metadataField := r["metadata"].(map[string]interface{})
+		metadataField := r["metadata"].(map[string]any)
 		createTime := metadataField["creationTimestamp"].(string)
 		name := metadataField["name"].(string)
-		row := []string{name, string(createTime)}
+		row := []string{name}
+		if hasExCol {
+			for _, c := range extraColumns {
+				value := client.GetMapValueByPath(r, c.path).(string)
+				row = append(row, value)
+			}
+		}
+		row = append(row, string(createTime))
 		table.Append(row)
 	}
 	table.Render()
 }
 
-func outputFmtJson(resources []map[string]interface{}) {
+func outputFmtJson(resources []map[string]any) {
 	rsbts, _ := json.MarshalIndent(resources, "", "  ")
 	fmt.Printf("%v", string(rsbts))
 }
 
-func outputFmtYaml(resources []map[string]interface{}) {
+func outputFmtYaml(resources []map[string]any) {
 	var s []string
 	for _, r := range resources {
 		byts, _ := yaml.MarshalWithOptions(r, yaml.AutoInt())

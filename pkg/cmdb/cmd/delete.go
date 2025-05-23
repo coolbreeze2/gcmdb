@@ -40,7 +40,7 @@ func newDeleteCmd(r cmdb.Resource) *cobra.Command {
 }
 
 func getDeleteHandle(c *cobra.Command, r cmdb.Resource, args []string) {
-	namespace, _ := c.Parent().PersistentFlags().GetString("namespace")
+	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
 	var err error
 	var name string
 

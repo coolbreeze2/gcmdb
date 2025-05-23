@@ -94,7 +94,7 @@ func addGetFlags(c *cobra.Command) {
 }
 
 func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
-	namespace, _ := c.Parent().PersistentFlags().GetString("namespace")
+	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
 	page, _ := c.Flags().GetInt64("page")
 	limit, _ := c.Flags().GetInt64("limit")
 	selector, _ := c.Flags().GetString("selector")

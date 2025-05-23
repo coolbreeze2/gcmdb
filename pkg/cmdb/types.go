@@ -6,33 +6,35 @@ import (
 	"github.com/creasty/defaults"
 )
 
+const APIVersion string = "v1alpha"
+
 func NewSecret() *Secret {
 	return &Secret{
-		ResourceBase: *NewResourceBase("Secret"),
+		ResourceBase: *NewResourceBase("Secret", ""),
 	}
 }
 
 func NewDatacenter() *Datacenter {
 	return &Datacenter{
-		ResourceBase: *NewResourceBase("Datacenter"),
+		ResourceBase: *NewResourceBase("Datacenter", ""),
 	}
 }
 
 func NewSCM() *SCM {
 	return &SCM{
-		ResourceBase: *NewResourceBase("SCM"),
+		ResourceBase: *NewResourceBase("SCM", ""),
 	}
 }
 
 func NewProject() *Project {
 	return &Project{
-		ResourceBase: *NewResourceBase("Project"),
+		ResourceBase: *NewResourceBase("Project", ""),
 	}
 }
 
 func NewApp() *App {
 	return &App{
-		ResourceBase: *NewResourceBase("App"),
+		ResourceBase: *NewResourceBase("App", ""),
 	}
 }
 
@@ -40,8 +42,6 @@ type Resource interface {
 	GetKind() string
 	GetMeta() ResourceMeta
 }
-
-const APIVersion string = "v1alpha"
 
 type ManagedFields struct {
 	Manager   string    `json:"manager" default:"cmctl"`
@@ -71,8 +71,9 @@ type ResourceMeta struct {
 	Annotations       map[string]string `json:"annotations"`
 }
 
-func NewResourceMeta() *ResourceMeta {
+func NewResourceMeta(namespace string) *ResourceMeta {
 	return &ResourceMeta{
+		Namespace:         namespace,
 		ManagedFields:     *NewManagedFields(),
 		CreationTimeStamp: time.Now(),
 		Labels:            make(map[string]string),
@@ -87,11 +88,11 @@ type ResourceBase struct {
 	Description string       `json:"description"`
 }
 
-func NewResourceBase(kind string) *ResourceBase {
+func NewResourceBase(kind, namespace string) *ResourceBase {
 	return &ResourceBase{
 		APIVersion: APIVersion,
 		Kind:       kind,
-		Metadata:   *NewResourceMeta(),
+		Metadata:   *NewResourceMeta(namespace),
 	}
 }
 

@@ -1,35 +1,26 @@
 package client
 
 import (
+	"encoding/json"
 	"goTool/pkg/cmdb"
-	"os"
 	"testing"
 
-	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 )
 
-func testCreateResource(t *testing.T, o cmdb.Resource, filePath string) {
-	file, err := os.ReadFile(filePath)
+func testCreateResource(t *testing.T, filePath string) {
+	r, err := ParseResourceFromFile(filePath)
 	assert.NoError(t, err)
-
-	var r map[string]any
-	err = yaml.Unmarshal(file, &r)
-	assert.NoError(t, err)
-
-	metadata := r["metadata"].(map[string]any)
-	name := metadata["name"].(string)
-	namespace, _ := metadata["namespace"].(string)
-	obj, err := DefaultCMDBClient.CreateResource(o, name, namespace, r)
+	obj, err := DefaultCMDBClient.CreateResource(r)
 	if err != nil {
-		assert.IsType(t, ResourceAlreadyExistError{}, err)
+		assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err)
 	} else {
 		assert.NoError(t, err)
 		assert.IsType(t, map[string]any{}, obj)
 	}
 
-	_, err = DefaultCMDBClient.CreateResource(o, name, namespace, r)
-	assert.IsType(t, ResourceAlreadyExistError{}, err)
+	_, err = DefaultCMDBClient.CreateResource(r)
+	assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err)
 }
 
 func testReadResource(t *testing.T, o cmdb.Resource, name, namespace string) {
@@ -58,20 +49,33 @@ func testGetResourceNames(t *testing.T, o cmdb.Resource, namespace string) {
 
 func testUpdateResource(t *testing.T, o cmdb.Resource, name, namespace, updatePath string, value any) {
 	obj, err := DefaultCMDBClient.ReadResource(o, name, namespace, 0)
+	oldVal := GetMapValueByPath(obj, updatePath)
 	assert.NoError(t, err)
 
 	if value == nil {
 		value = RandomString(6)
 	}
+
 	err = SetMapValueByPath(obj, updatePath, value)
 	assert.NoError(t, err)
 
-	obj, err = DefaultCMDBClient.UpdateResource(o, name, namespace, obj)
+	jsonByte, err := json.Marshal(obj)
 	assert.NoError(t, err)
-	assert.Equal(t, value, GetMapValueByPath(obj, updatePath))
+	err = json.Unmarshal(jsonByte, &o)
+	assert.NoError(t, err)
+
+	obj1, err := DefaultCMDBClient.UpdateResource(o)
+	assert.NoError(t, err)
+	newValue := GetMapValueByPath(obj1, updatePath)
+	assert.NoError(t, err)
+	if oldVal == value {
+		assert.Equal(t, nil, newValue)
+	} else {
+		assert.Equal(t, value, newValue)
+	}
 
 	// 重复执行，无变化
-	obj2, err := DefaultCMDBClient.UpdateResource(o, name, namespace, obj)
+	obj2, err := DefaultCMDBClient.UpdateResource(o)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(obj2))
 }
@@ -82,23 +86,19 @@ func testDeleteResource(t *testing.T, o cmdb.Resource, name, namespace string) {
 	assert.NoError(t, err)
 
 	_, err = DefaultCMDBClient.DeleteResource(o, name, namespace)
-	assert.IsType(t, ResourceNotFoundError{}, err)
+	assert.IsType(t, cmdb.ResourceNotFoundError{}, err)
 }
 
 func TestCreateResource(t *testing.T) {
-	type Case struct {
-		o        cmdb.Resource
-		filePath string
-	}
-	cases := []Case{
-		{cmdb.NewSecret(), "../example/files/secret.yaml"},
-		{cmdb.NewDatacenter(), "../example/files/datacenter.yaml"},
-		{cmdb.NewSCM(), "../example/files/scm.yaml"},
-		{cmdb.NewProject(), "../example/files/project.yaml"},
-		{cmdb.NewApp(), "../example/files/app.yaml"},
+	cases := []string{
+		"../example/files/secret.yaml",
+		"../example/files/datacenter.yaml",
+		"../example/files/scm.yaml",
+		"../example/files/project.yaml",
+		"../example/files/app.yaml",
 	}
 	for i := range cases {
-		testCreateResource(t, cases[i].o, cases[i].filePath)
+		testCreateResource(t, cases[i])
 	}
 }
 
@@ -178,9 +178,9 @@ func TestUpdateResource(t *testing.T) {
 		value                       any
 	}
 	cases := []Case{
-		{cmdb.NewSecret(), "test", "", "data.privateKey", "MTIzMg=="},
+		// {cmdb.NewSecret(), "test", "", "data.privateKey", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
 		{cmdb.NewDatacenter(), "test", "", "spec.provider", "huawei-cloud"},
-		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://gitlab-sec.dev.com"},
+		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
 	}

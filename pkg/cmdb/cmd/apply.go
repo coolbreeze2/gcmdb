@@ -6,11 +6,8 @@ import (
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
 	"os"
-	"path"
 	"sort"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
 
@@ -36,10 +33,10 @@ func applyCmdHandle(c *cobra.Command) {
 		CheckError(err)
 	} else {
 		if info.IsDir() {
-			resources, err = parseResourceFromDir(filePath)
+			resources, err = client.ParseResourceFromDir(filePath)
 		} else {
 			var resource cmdb.Resource
-			resource, err = parseResourceFromFile(filePath)
+			resource, err = client.ParseResourceFromFile(filePath)
 			resources = append(resources, resource)
 		}
 		CheckError(err)
@@ -53,50 +50,6 @@ func addApplyFlags(c *cobra.Command) {
 	c.Flags().StringP("filename", "f", "", "File or directory name")
 }
 
-func parseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {
-	var objs []cmdb.Resource
-	entries, err := os.ReadDir(dirPath)
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
-		filePath := path.Join(dirPath, e.Name())
-		if obj, err := parseResourceFromFile(filePath); err == nil {
-			objs = append(objs, obj)
-		} else {
-			return nil, err
-		}
-	}
-	return objs, nil
-}
-
-func parseResourceFromFile(filePath string) (cmdb.Resource, error) {
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	file, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-	var jsonObj map[string]any
-	if err = yaml.Unmarshal(file, &jsonObj); err != nil {
-		return nil, err
-	}
-	kind := jsonObj["kind"].(string)
-
-	o, err := GetResourceKindByString(kind)
-	CheckError(err)
-
-	// 不允许设置额外字段
-	if err := yaml.UnmarshalWithOptions(file, o, yaml.DisallowUnknownField()); err != nil {
-		return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
-	}
-
-	if err = validate.Struct(o); err != nil {
-		return nil, fmt.Errorf("%s when parse file %s", err.Error(), filePath)
-	}
-
-	return o, nil
-}
-
 // 检查资源类型是否存在
 func checkResourceTypeExist(resources []cmdb.Resource) error {
 	for _, v := range resources {
@@ -108,7 +61,7 @@ func checkResourceTypeExist(resources []cmdb.Resource) error {
 			}
 		}
 		if !exist {
-			return client.ResourceTypeError{Kind: kind}
+			return cmdb.ResourceTypeError{Kind: kind}
 		}
 	}
 	return nil
@@ -141,7 +94,7 @@ func applyResource(r cmdb.Resource) {
 	switch err.(type) {
 	default:
 		CheckError(err)
-	case client.ResourceNotFoundError:
+	case cmdb.ResourceNotFoundError:
 		// 不存在，则创建
 		createUpdateResource(r, "CREATE")
 	case nil:
@@ -163,9 +116,9 @@ func createUpdateResource(r cmdb.Resource, action string) {
 
 	switch action {
 	case "CREATE":
-		result, err = cli.CreateResource(r, metadata.Name, metadata.Namespace, jsonObj)
+		result, err = cli.CreateResource(r)
 	case "UPDATE":
-		result, err = cli.UpdateResource(r, metadata.Name, metadata.Namespace, jsonObj)
+		result, err = cli.UpdateResource(r)
 	}
 	CheckError(err)
 

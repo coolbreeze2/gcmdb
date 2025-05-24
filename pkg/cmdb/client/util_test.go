@@ -1,6 +1,7 @@
 package client
 
 import (
+	"goTool/pkg/cmdb"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,5 +65,14 @@ func TestSetMapValueByPathRootNil(t *testing.T) {
 	m := map[string]any{}
 	path := "foo.bar.baz.some.other.thing"
 	err := SetMapValueByPath(m, path, "")
-	assert.Error(t, err, MapKeyPathError{path})
+	assert.Error(t, err, cmdb.MapKeyPathError{KeyPath: path})
+}
+
+type Metadata struct {
+	Name   string
+	Labels map[string]string
+}
+
+type Pod struct {
+	Metadata Metadata
 }

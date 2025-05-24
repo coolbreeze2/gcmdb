@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"goTool/global"
 	"goTool/pkg/cmdb"
+	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/go-playground/validator/v10"
+	"github.com/goccy/go-yaml"
 )
 
 func NewListOptions(
@@ -33,19 +37,27 @@ func NewListOptions(
 }
 
 // 创建资源
-func (c CMDBClient) CreateResource(r cmdb.Resource, name string, namespace string, resource map[string]any) (map[string]any, error) {
+func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 	var url, body string
 	var err error
-	var mapData map[string]any
+	var resource, mapData map[string]any
+	meta := r.GetMeta()
+	resoureByte, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(resoureByte, &resource); err != nil {
+		return nil, err
+	}
 
-	if url, err = c.getCreateListResourceUrl(r, namespace); err != nil {
+	if url, err = c.getCreateListResourceUrl(r, meta.Namespace); err != nil {
 		return nil, err
 	}
 	removeResourceManageFields(resource)
 
 	body, _, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
 
-	if err = fmtCURDError(r, name, namespace, body, err); err != nil {
+	if err = fmtCURDError(r, meta.Name, meta.Namespace, body, err); err != nil {
 		return nil, err
 	}
 
@@ -57,20 +69,29 @@ func (c CMDBClient) CreateResource(r cmdb.Resource, name string, namespace strin
 }
 
 // 更新资源
-func (c CMDBClient) UpdateResource(r cmdb.Resource, name string, namespace string, resource map[string]any) (map[string]any, error) {
+func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
 	var url, body string
 	var statusCode int
 	var err error
-	var mapData map[string]any
+	var resource, mapData map[string]any
+	resoureByte, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(resoureByte, &resource); err != nil {
+		return nil, err
+	}
 
-	if url, err = c.getURDResourceUrl(r, name, namespace); err != nil {
+	meta := r.GetMeta()
+
+	if url, err = c.getURDResourceUrl(r, meta.Name, meta.Namespace); err != nil {
 		return nil, err
 	}
 	removeResourceManageFields(resource)
 
 	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
 
-	if err = fmtCURDError(r, name, namespace, body, err); err != nil {
+	if err = fmtCURDError(r, meta.Name, meta.Namespace, body, err); err != nil {
 		return nil, err
 	}
 
@@ -212,19 +233,19 @@ func unMarshalStringToArrayMap(body string) ([]map[string]any, error) {
 func fmtCURDError(r cmdb.Resource, name, namespace, body string, err error) error {
 	lkind := LowerKind(r)
 	switch e := err.(type) {
-	case ServerError:
+	case cmdb.ServerError:
 		switch e.StatusCode {
 		case 422:
-			return ResourceValidateError{e.Path, lkind, name, namespace, body}
+			return cmdb.ResourceValidateError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace, Message: body}
 		case 400:
 			if ok, _ := regexp.MatchString("reference", body); ok {
-				return ResourceReferencedError{e.Path, lkind, name, namespace, body}
+				return cmdb.ResourceReferencedError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace, Message: body}
 			}
 			if ok, _ := regexp.MatchString("already exist", body); ok {
-				return ResourceAlreadyExistError{e.Path, lkind, name, namespace, body}
+				return cmdb.ResourceAlreadyExistError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace, Message: body}
 			}
 		case 404:
-			return ResourceNotFoundError{e.Path, lkind, name, namespace}
+			return cmdb.ResourceNotFoundError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace}
 		}
 	}
 	return err
@@ -241,7 +262,7 @@ func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) (
 
 // 创建/查询列表 的 URL
 func (c CMDBClient) getCreateListResourceUrl(r cmdb.Resource, namespace string) (string, error) {
-	if namespace == "" {
+	if r.GetMeta().Namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 	} else {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), namespace, "/")
@@ -304,4 +325,51 @@ func removeResourceManageFields(r map[string]any) {
 		delete(metadata, "namespace")
 	}
 	r["metadata"] = metadata
+}
+
+func ParseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {
+	var objs []cmdb.Resource
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		filePath := path.Join(dirPath, e.Name())
+		if obj, err := ParseResourceFromFile(filePath); err == nil {
+			objs = append(objs, obj)
+		} else {
+			return nil, err
+		}
+	}
+	return objs, nil
+}
+
+func ParseResourceFromFile(filePath string) (cmdb.Resource, error) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	file, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	var jsonObj map[string]any
+	if err = yaml.Unmarshal(file, &jsonObj); err != nil {
+		return nil, err
+	}
+	kind := jsonObj["kind"].(string)
+
+	o, err := cmdb.NewResourceWithKind(kind)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 不允许设置额外字段
+	if err := yaml.UnmarshalWithOptions(file, o, yaml.DisallowUnknownField()); err != nil {
+		return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
+	}
+
+	if err = validate.Struct(o); err != nil {
+		return nil, fmt.Errorf("%s when parse file %s", err.Error(), filePath)
+	}
+
+	return o, nil
 }

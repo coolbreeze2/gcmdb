@@ -3,11 +3,14 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"goTool/pkg/cmdb"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -25,6 +28,27 @@ func RandomString(length int) string {
 		b[i] = charset[r.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+// GetFieldByPath 获取结构体中路径对应的值，比如 "metadata.name"
+func GetFieldByPath(obj any, path string) (any, error) {
+	v := reflect.ValueOf(obj)
+	// 如果是指针，取 Elem()
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	parts := strings.Split(path, ".")
+	for _, part := range parts {
+		if v.Kind() == reflect.Struct {
+			v = v.FieldByName(part)
+			if !v.IsValid() {
+				return nil, fmt.Errorf("field %s not found", part)
+			}
+		} else {
+			return nil, fmt.Errorf("unexpected kind: %s", v.Kind())
+		}
+	}
+	return v.Interface(), nil
 }
 
 // Path walks the dot-delimited `path` to return a nested map value, or nil.
@@ -57,7 +81,7 @@ func SetMapValueByPath(m map[string]any, path string, value any) error {
 				curr = nextMap
 			} else {
 				currPath := strings.Join(keys[:i], ".")
-				return MapKeyPathError{currPath}
+				return cmdb.MapKeyPathError{KeyPath: currPath}
 			}
 		}
 	}
@@ -144,7 +168,7 @@ func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 	srespBody := string(respBody)
 	statusCode := response.StatusCode
 	if statusCode >= 400 {
-		err = ServerError{url_.String(), statusCode, srespBody}
+		err = cmdb.ServerError{Path: url_.String(), StatusCode: statusCode, Message: srespBody}
 		return srespBody, response.StatusCode, err
 	}
 

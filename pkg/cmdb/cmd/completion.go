@@ -4,7 +4,6 @@ import (
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
 	"slices"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -31,7 +30,7 @@ func CompleteFunc(cmd *cobra.Command, args []string, toComplete string) ([]strin
 
 // Completion resource name
 func completeName(kind, namespace string) []string {
-	o, err := GetResourceKindByString(kind)
+	o, err := cmdb.NewResourceWithKind(kind)
 	CheckError(err)
 	cli := client.DefaultCMDBClient
 	options, err := cli.GetResourceNames(o, namespace)
@@ -43,19 +42,4 @@ func completeName(kind, namespace string) []string {
 func completeNamespace() []string {
 	var optiosn []string
 	return optiosn
-}
-
-func GetResourceKindByString(kind string) (cmdb.Resource, error) {
-	kind = strings.ToLower(kind)
-	kindMap := map[string]cmdb.Resource{
-		"secret":     cmdb.NewSecret(),
-		"scm":        cmdb.NewSCM(),
-		"datacenter": cmdb.NewDatacenter(),
-		"project":    cmdb.NewProject(),
-		"app":        cmdb.NewApp(),
-	}
-	if r, ok := kindMap[kind]; ok {
-		return r, nil
-	}
-	return nil, client.ResourceTypeError{Kind: kind}
 }

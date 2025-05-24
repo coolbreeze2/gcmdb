@@ -1,12 +1,28 @@
 package cmdb
 
 import (
+	"strings"
 	"time"
 
 	"github.com/creasty/defaults"
 )
 
 const APIVersion string = "v1alpha"
+
+func NewResourceWithKind(kind string) (Resource, error) {
+	kind = strings.ToLower(kind)
+	kindMap := map[string]Resource{
+		"secret":     NewSecret(),
+		"scm":        NewSCM(),
+		"datacenter": NewDatacenter(),
+		"project":    NewProject(),
+		"app":        NewApp(),
+	}
+	if r, ok := kindMap[kind]; ok {
+		return r, nil
+	}
+	return nil, ResourceTypeError{Kind: kind}
+}
 
 func NewSecret() *Secret {
 	return &Secret{

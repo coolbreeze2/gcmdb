@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"goTool/pkg/cmdb/client"
+	"goTool/pkg/cmdb"
 	"os"
 	"strings"
 )
@@ -15,19 +15,19 @@ func CheckError(err error) {
 	}
 
 	switch err.(type) {
-	case client.ResourceNotFoundError:
+	case cmdb.ResourceNotFoundError:
 		msg := fmt.Sprintf("Error from server (NotFound): %s", err.Error())
 		fatalErrHandler(msg, DefaultErrorExitCode)
-	case client.ResourceValidateError:
+	case cmdb.ResourceValidateError:
 		msg := fmt.Sprintf("Error from server (ValidateError): %s", err.Error())
 		fatalErrHandler(msg, DefaultErrorExitCode)
-	case client.ResourceAlreadyExistError:
+	case cmdb.ResourceAlreadyExistError:
 		msg := fmt.Sprintf("Error from server (AlreadyExistError): %s", err.Error())
 		fatalErrHandler(msg, DefaultErrorExitCode)
-	case client.ResourceReferencedError:
+	case cmdb.ResourceReferencedError:
 		msg := fmt.Sprintf("Error from server (ReferencedError): %s", err.Error())
 		fatalErrHandler(msg, DefaultErrorExitCode)
-	case client.ServerError:
+	case cmdb.ServerError:
 		msg := fmt.Sprintf("Error from server (UnknowError): %s", err.Error())
 		fatalErrHandler(msg, DefaultErrorExitCode)
 	default:

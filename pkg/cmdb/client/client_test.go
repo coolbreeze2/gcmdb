@@ -81,11 +81,10 @@ func testUpdateResource(t *testing.T, o cmdb.Resource, name, namespace, updatePa
 }
 
 func testDeleteResource(t *testing.T, o cmdb.Resource, name, namespace string) {
-	obj, err := DefaultCMDBClient.DeleteResource(o, name, namespace)
-	assert.Nil(t, obj)
+	err := DefaultCMDBClient.DeleteResource(o, name, namespace)
 	assert.NoError(t, err)
 
-	_, err = DefaultCMDBClient.DeleteResource(o, name, namespace)
+	err = DefaultCMDBClient.DeleteResource(o, name, namespace)
 	assert.IsType(t, cmdb.ResourceNotFoundError{}, err)
 }
 

@@ -3,14 +3,12 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"goTool/pkg/cmdb"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"path"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -30,25 +28,15 @@ func RandomString(length int) string {
 	return string(b)
 }
 
-// GetFieldByPath 获取结构体中路径对应的值，比如 "metadata.name"
-func GetFieldByPath(obj any, path string) (any, error) {
-	v := reflect.ValueOf(obj)
-	// 如果是指针，取 Elem()
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+func StructToMap(s any, out *map[string]any) error {
+	// 先将 struct 转为 JSON
+	data, err := json.Marshal(s)
+	if err != nil {
+		return err
 	}
-	parts := strings.Split(path, ".")
-	for _, part := range parts {
-		if v.Kind() == reflect.Struct {
-			v = v.FieldByName(part)
-			if !v.IsValid() {
-				return nil, fmt.Errorf("field %s not found", part)
-			}
-		} else {
-			return nil, fmt.Errorf("unexpected kind: %s", v.Kind())
-		}
-	}
-	return v.Interface(), nil
+
+	// 再将 JSON 解析到 map
+	return json.Unmarshal(data, out)
 }
 
 // Path walks the dot-delimited `path` to return a nested map value, or nil.
@@ -109,7 +97,7 @@ func UrlJoin(baseURL string, paths ...string) (string, error) {
 }
 
 // 发送HTTP请求
-func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
+func DoHttpRequest(args HttpRequestArgs) ([]byte, int, error) {
 	// 构造URL带参数
 	var request *http.Request
 	var response *http.Response
@@ -119,7 +107,7 @@ func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 	var err error
 
 	if url_, err = url.Parse(args.Url); err != nil {
-		return "", -1, err
+		return []byte{}, -1, err
 	}
 
 	// 添加查询参数
@@ -135,7 +123,7 @@ func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 	var body *bytes.Reader
 	if args.Data != nil {
 		if data, err := json.Marshal(args.Data); err != nil {
-			return "", -1, err
+			return []byte{}, -1, err
 		} else {
 			body = bytes.NewReader([]byte(data))
 		}
@@ -145,7 +133,7 @@ func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 
 	// 创建请求
 	if request, err = http.NewRequest(args.Method, url_.String(), body); err != nil {
-		return "", -1, err
+		return []byte{}, -1, err
 	}
 
 	// 添加请求头
@@ -156,21 +144,21 @@ func DoHttpRequest(args HttpRequestArgs) (string, int, error) {
 	// 使用默认客户端发起请求
 	client := http.DefaultClient
 	if response, err = client.Do(request); err != nil {
-		return "", -1, err
+		return []byte{}, -1, err
 	}
 	defer response.Body.Close()
 
 	// 读取响应内容
 	if respBody, err = io.ReadAll(response.Body); err != nil {
-		return "", -1, err
+		return []byte{}, -1, err
 	}
 
 	srespBody := string(respBody)
 	statusCode := response.StatusCode
 	if statusCode >= 400 {
 		err = cmdb.ServerError{Path: url_.String(), StatusCode: statusCode, Message: srespBody}
-		return srespBody, response.StatusCode, err
+		return respBody, response.StatusCode, err
 	}
 
-	return srespBody, statusCode, nil
+	return respBody, statusCode, nil
 }

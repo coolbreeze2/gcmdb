@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
@@ -104,13 +103,10 @@ func applyResource(r cmdb.Resource) {
 }
 
 func createUpdateResource(r cmdb.Resource, action string) {
-	var jsonObj, result map[string]any
+	var result map[string]any
 	var err error
 
 	metadata := r.GetMeta()
-
-	err = structToMap(r, &jsonObj)
-	CheckError(err)
 
 	cli := client.DefaultCMDBClient
 
@@ -130,15 +126,4 @@ func createUpdateResource(r cmdb.Resource, action string) {
 	} else if action == "CREATE" {
 		fmt.Printf("%v/%v created\n", lkind, metadata.Name)
 	}
-}
-
-func structToMap(s any, m *map[string]any) error {
-	// 先将 struct 转为 JSON
-	data, err := json.Marshal(s)
-	if err != nil {
-		return err
-	}
-
-	// 再将 JSON 解析到 map
-	return json.Unmarshal(data, m)
 }

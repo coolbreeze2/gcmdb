@@ -47,7 +47,7 @@ func getDeleteHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 	cli := client.DefaultCMDBClient
 	for index := range args {
 		name = args[index]
-		if _, err = cli.DeleteResource(r, name, namespace); err != nil {
+		if err = cli.DeleteResource(r, name, namespace); err != nil {
 			CheckError(err)
 		} else {
 			fmt.Printf("%v %v deleted.\n", client.LowerKind(r), name)

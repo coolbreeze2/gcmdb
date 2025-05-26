@@ -63,8 +63,7 @@ func SetMapValueByPath(m map[string]any, path string, value any) error {
 			if nextMap, ok := curr[key].(map[string]any); ok {
 				curr = nextMap
 			} else {
-				currPath := strings.Join(keys[:i], ".")
-				return cmdb.MapKeyPathError{KeyPath: currPath}
+				return cmdb.MapKeyPathError{KeyPath: path}
 			}
 		}
 	}

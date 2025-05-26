@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	bou.ke/monkey v1.0.2 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect

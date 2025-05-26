@@ -30,7 +30,7 @@ func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 
 	resp, err := req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
-	return result, fmtError(r, resp, err)
+	return result, c.fmtError(r, resp, err)
 }
 
 // 更新资源
@@ -48,7 +48,7 @@ func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
 
 	resp, err := req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
-	return result, fmtError(r, resp, err)
+	return result, c.fmtError(r, resp, err)
 }
 
 // 查询指定名称的资源
@@ -61,7 +61,7 @@ func (c CMDBClient) ReadResource(r cmdb.Resource, name string, namespace string,
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
 	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&result).Get(url)
 
-	return result, fmtError(r, resp, err)
+	return result, c.fmtError(r, resp, err)
 }
 
 // 删除资源指定名称的资源
@@ -71,7 +71,7 @@ func (c CMDBClient) DeleteResource(r cmdb.Resource, name, namespace string) erro
 	url := c.getURDResourceUrl(r, name, namespace)
 	resp, err := req.C().R().Delete(url)
 
-	return fmtError(r, resp, err)
+	return c.fmtError(r, resp, err)
 }
 
 // 查询多个资源
@@ -89,7 +89,7 @@ func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[strin
 	}
 	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&result).Get(url)
 
-	return result, fmtError(r, resp, err)
+	return result, c.fmtError(r, resp, err)
 }
 
 // 查询指定类型资源的总数 count
@@ -101,7 +101,7 @@ func (c CMDBClient) CountResource(r cmdb.Resource, namespace string) (int, error
 	query := map[string]string{"namespace": namespace}
 	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&count).Get(url)
 
-	return count, fmtError(r, resp, err)
+	return count, c.fmtError(r, resp, err)
 }
 
 // 查询指定类型资源的所有名称 names
@@ -113,11 +113,11 @@ func (c CMDBClient) GetResourceNames(r cmdb.Resource, namespace string) ([]strin
 	query := map[string]string{"namespace": namespace}
 	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&names).Get(url)
 
-	return names, fmtError(r, resp, err)
+	return names, c.fmtError(r, resp, err)
 }
 
 // 格式化错误信息
-func fmtError(r cmdb.Resource, resp *req.Response, err error) error {
+func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) error {
 	if err != nil {
 		return err
 	}
@@ -128,18 +128,18 @@ func fmtError(r cmdb.Resource, resp *req.Response, err error) error {
 	if resp.StatusCode >= 400 {
 		switch resp.StatusCode {
 		default:
-			return cmdb.ServerError{Path: resp.Request.URL.Host, StatusCode: resp.StatusCode, Message: resp.String()}
+			return cmdb.ServerError{Path: c.getCMDBAPIURL(), StatusCode: resp.StatusCode, Message: resp.String()}
 		case 422:
-			return cmdb.ResourceValidateError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
+			return cmdb.ResourceValidateError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 		case 400:
 			if ok, _ := regexp.MatchString("reference", resp.String()); ok {
-				return cmdb.ResourceReferencedError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
+				return cmdb.ResourceReferencedError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
 			if ok, _ := regexp.MatchString("already exist", resp.String()); ok {
-				return cmdb.ResourceAlreadyExistError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
+				return cmdb.ResourceAlreadyExistError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
 		case 404:
-			return cmdb.ResourceNotFoundError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace}
+			return cmdb.ResourceNotFoundError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace}
 		}
 	}
 	return nil

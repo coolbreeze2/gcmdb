@@ -27,9 +27,6 @@ var extraCustomColumn = map[string][]customColumn{
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get resources",
-	Run: func(cmd *cobra.Command, args []string) {
-		//
-	},
 }
 
 func InitMutilGetCmd(objs []cmdb.Resource) {

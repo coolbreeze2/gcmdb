@@ -29,11 +29,10 @@ type ResourceNotFoundError struct {
 }
 
 func (o ResourceNotFoundError) Error() string {
-	msg := fmt.Sprintf("%s/%s not found at %s", o.Kind, o.Name, o.Path)
-	if o.Namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.Namespace, msg)
-	}
-	return msg
+	return fmtNamespaceError(
+		fmt.Sprintf("%s/%s not found at %s", o.Kind, o.Name, o.Path),
+		o.Namespace,
+	)
 }
 
 type ResourceValidateError struct {
@@ -46,10 +45,7 @@ type ResourceValidateError struct {
 
 func (o ResourceValidateError) Error() string {
 	msg := fmt.Sprintf("%s/%s validate error %s at %s", o.Kind, o.Name, o.Message, o.Path)
-	if o.Namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.Namespace, msg)
-	}
-	return msg
+	return fmtNamespaceError(msg, o.Namespace)
 }
 
 type ResourceAlreadyExistError struct {
@@ -61,11 +57,10 @@ type ResourceAlreadyExistError struct {
 }
 
 func (o ResourceAlreadyExistError) Error() string {
-	msg := fmt.Sprintf("%s/%s already exist error %s at %s", o.Kind, o.Name, o.Message, o.Path)
-	if o.Namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.Namespace, msg)
-	}
-	return msg
+	return fmtNamespaceError(
+		fmt.Sprintf("%s/%s already exist error %s at %s", o.Kind, o.Name, o.Message, o.Path),
+		o.Namespace,
+	)
 }
 
 type ResourceReferencedError struct {
@@ -77,9 +72,15 @@ type ResourceReferencedError struct {
 }
 
 func (o ResourceReferencedError) Error() string {
-	msg := fmt.Sprintf("%s/%s has been referenced error %s at %s", o.Kind, o.Name, o.Message, o.Path)
-	if o.Namespace != "" {
-		msg = fmt.Sprintf("%s/%s", o.Namespace, msg)
+	return fmtNamespaceError(
+		fmt.Sprintf("%s/%s has been referenced error %s at %s", o.Kind, o.Name, o.Message, o.Path),
+		o.Namespace,
+	)
+}
+
+func fmtNamespaceError(msg, namespace string) string {
+	if namespace != "" {
+		msg = fmt.Sprintf("%s/%s", namespace, msg)
 	}
 	return msg
 }
@@ -91,6 +92,5 @@ type ServerError struct {
 }
 
 func (o ServerError) Error() string {
-	msg := fmt.Sprintf("server response code %s Error at %s, %s", strconv.Itoa(o.StatusCode), o.Path, o.Message)
-	return msg
+	return fmt.Sprintf("server response code %s Error at %s, %s", strconv.Itoa(o.StatusCode), o.Path, o.Message)
 }

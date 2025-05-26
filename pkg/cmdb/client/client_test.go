@@ -126,6 +126,15 @@ func TestReadResource(t *testing.T) {
 	}
 }
 
+func TestReadResourceNoNamespace(t *testing.T) {
+	cli := CMDBClient{}
+	app := cmdb.NewApp()
+	namspace := "not-exist-namespace"
+	app.Metadata.Namespace = namspace
+	_, err := cli.ReadResource(app, "go-app", namspace, 0)
+	assert.EqualError(t, cmdb.ResourceNotFoundError{Path: cli.getCMDBAPIURL(), Kind: "apps", Namespace: namspace}, err.Error())
+}
+
 func TestListResource(t *testing.T) {
 	TestCreateResource(t)
 	cases := []cmdb.Resource{

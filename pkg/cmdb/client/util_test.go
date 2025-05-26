@@ -72,5 +72,5 @@ func TestSetMapValueByPathRootNil(t *testing.T) {
 	m := map[string]any{}
 	path := "foo.bar.baz.some.other.thing"
 	err := SetMapValueByPath(m, path, "")
-	assert.Error(t, err, cmdb.MapKeyPathError{KeyPath: path})
+	assert.EqualError(t, err, cmdb.MapKeyPathError{KeyPath: path}.Error())
 }

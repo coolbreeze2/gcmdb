@@ -3,8 +3,6 @@ package cmdb
 import (
 	"strings"
 	"time"
-
-	"github.com/creasty/defaults"
 )
 
 const APIVersion string = "v1alpha"
@@ -65,16 +63,6 @@ type ManagedFields struct {
 	Time      time.Time `json:"time"`
 }
 
-func NewManagedFields() *ManagedFields {
-	obj := &ManagedFields{
-		Time: time.Now(),
-	}
-	if err := defaults.Set(obj); err != nil {
-		panic(err)
-	}
-	return obj
-}
-
 type ResourceMeta struct {
 	Name              string            `json:"name" validate:"required,dns_rfc1035_label"`
 	Namespace         string            `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
@@ -90,7 +78,7 @@ type ResourceMeta struct {
 func NewResourceMeta(namespace string) *ResourceMeta {
 	return &ResourceMeta{
 		Namespace:         namespace,
-		ManagedFields:     *NewManagedFields(),
+		ManagedFields:     ManagedFields{},
 		CreationTimeStamp: time.Now(),
 		Labels:            make(map[string]string),
 		Annotations:       make(map[string]string),

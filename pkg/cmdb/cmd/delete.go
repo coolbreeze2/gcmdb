@@ -12,9 +12,6 @@ import (
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete resources",
-	Run: func(cmd *cobra.Command, args []string) {
-		//
-	},
 }
 
 func InitMutilDeleteCmd(objs []cmdb.Resource) {
@@ -41,16 +38,12 @@ func newDeleteCmd(r cmdb.Resource) *cobra.Command {
 
 func getDeleteHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
-	var err error
 	var name string
 
 	cli := client.DefaultCMDBClient
 	for index := range args {
 		name = args[index]
-		if err = cli.DeleteResource(r, name, namespace); err != nil {
-			CheckError(err)
-		} else {
-			fmt.Printf("%v %v deleted.\n", client.LowerKind(r), name)
-		}
+		CheckError(cli.DeleteResource(r, name, namespace))
+		fmt.Printf("%v %v deleted.\n", client.LowerKind(r), name)
 	}
 }

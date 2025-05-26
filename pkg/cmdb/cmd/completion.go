@@ -14,9 +14,6 @@ func CompleteFunc(cmd *cobra.Command, args []string, toComplete string) ([]strin
 	completionCmd := p.Use == "get" || p.Use == "delete"
 	if p != nil && completionCmd {
 		namespace, _ := p.PersistentFlags().GetString("namespace")
-		if p.Use == "get" && len(args) != 0 {
-			return options, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
-		}
 		kind := cmd.Short
 		names := completeName(kind, namespace)
 		for _, name := range names {
@@ -39,7 +36,3 @@ func completeName(kind, namespace string) []string {
 }
 
 // TODO: Completion namespace
-func completeNamespace() []string {
-	var optiosn []string
-	return optiosn
-}

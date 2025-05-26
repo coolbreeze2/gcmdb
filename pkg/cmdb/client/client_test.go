@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"goTool/pkg/cmdb"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,6 +87,12 @@ func testDeleteResource(t *testing.T, o cmdb.Resource, name, namespace string) {
 
 	err = DefaultCMDBClient.DeleteResource(o, name, namespace)
 	assert.IsType(t, cmdb.ResourceNotFoundError{}, err)
+}
+
+func TestWithBadAPIUrl(t *testing.T) {
+	cli := NewCMDBClient(":/bad-url.com")
+	_, err := cli.CreateResource(cmdb.NewApp())
+	assert.IsType(t, &url.Error{}, err)
 }
 
 func TestCreateResource(t *testing.T) {

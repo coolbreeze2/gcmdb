@@ -99,14 +99,13 @@ func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
 	limit, _ := c.Flags().GetInt64("limit")
 	selector, _ := c.Flags().GetString("selector")
 	field_selector, _ := c.Flags().GetString("field_selector")
-	opt := client.NewListOptions(
-		namespace,
-		page,
-		limit,
-		client.ParseSelector(selector),
-		client.ParseSelector(field_selector),
-	)
-	return opt
+	return &client.ListOptions{
+		Namespace:     namespace,
+		Page:          page,
+		Limit:         limit,
+		Selector:      client.ParseSelector(selector),
+		FieldSelector: client.ParseSelector(field_selector),
+	}
 }
 
 func outputFmtSimple(resources []map[string]any, r cmdb.Resource) {

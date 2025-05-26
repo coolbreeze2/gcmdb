@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/json"
 	"fmt"
 	"goTool/global"
 	"goTool/pkg/cmdb"
@@ -11,35 +10,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
+	"github.com/imroc/req/v3"
 )
-
-func NewListOptions(
-	namespace string,
-	page int64,
-	limit int64,
-	selector map[string]string,
-	field_selector map[string]string,
-) *ListOptions {
-	obj := &ListOptions{
-		Namespace:     namespace,
-		Page:          page,
-		Limit:         limit,
-		Selector:      selector,
-		FieldSelector: field_selector,
-	}
-	if err := defaults.Set(obj); err != nil {
-		panic(err)
-	}
-	return obj
-}
 
 // 创建资源
 func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
-	var url string
-	var body []byte
 	var err error
 	var resource, result map[string]any
 	meta := r.GetMeta()
@@ -48,29 +25,16 @@ func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 		return nil, err
 	}
 
-	if url, err = c.getCreateListResourceUrl(r, meta.Namespace); err != nil {
-		return nil, err
-	}
+	url := c.getCreateListResourceUrl(r, meta.Namespace)
 	removeResourceManageFields(resource)
 
-	body, _, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
+	resp, err := req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
-	if err = fmtCURDError(r, meta.Name, meta.Namespace, err); err != nil {
-		return nil, err
-	}
-
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return result, fmtError(r, resp, err)
 }
 
 // 更新资源
 func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
-	var url string
-	var body []byte
-	var statusCode int
 	var err error
 	var resource, result map[string]any
 	meta := r.GetMeta()
@@ -79,75 +43,43 @@ func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
 		return nil, err
 	}
 
-	if url, err = c.getURDResourceUrl(r, meta.Name, meta.Namespace); err != nil {
-		return nil, err
-	}
+	url := c.getURDResourceUrl(r, meta.Name, meta.Namespace)
 	removeResourceManageFields(resource)
 
-	body, statusCode, err = DoHttpRequest(HttpRequestArgs{Method: "POST", Url: url, Data: resource})
+	resp, err := req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
-	if err = fmtCURDError(r, meta.Name, meta.Namespace, err); err != nil {
-		return nil, err
-	}
-
-	if statusCode == 204 {
-		return result, nil
-	}
-
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return result, fmtError(r, resp, err)
 }
 
 // 查询指定名称的资源
 func (c CMDBClient) ReadResource(r cmdb.Resource, name string, namespace string, revision int64) (map[string]any, error) {
-	var url string
-	var body []byte
 	var err error
 	var result map[string]any
 
-	if url, err = c.getURDResourceUrl(r, name, namespace); err != nil {
-		return nil, err
-	}
+	url := c.getURDResourceUrl(r, name, namespace)
 
 	query := map[string]string{"revision": strconv.FormatInt(revision, 10)}
-	body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query})
+	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&result).Get(url)
 
-	if err = fmtCURDError(r, name, namespace, err); err != nil {
-		return nil, err
-	}
-
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return result, fmtError(r, resp, err)
 }
 
 // 删除资源指定名称的资源
 func (c CMDBClient) DeleteResource(r cmdb.Resource, name, namespace string) error {
-	var url string
 	var err error
 
-	if url, err = c.getURDResourceUrl(r, name, namespace); err != nil {
-		return err
-	}
+	url := c.getURDResourceUrl(r, name, namespace)
+	resp, err := req.C().R().Delete(url)
 
-	_, _, err = DoHttpRequest(HttpRequestArgs{Method: "DELETE", Url: url})
-
-	return fmtCURDError(r, name, namespace, err)
+	return fmtError(r, resp, err)
 }
 
 // 查询多个资源
 func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[string]any, error) {
-	var url string
-	var body []byte
 	var err error
 	var result []map[string]any
 
-	if url, err = c.getCreateListResourceUrl(r, opt.Namespace); err != nil {
-		return nil, err
-	}
+	url := c.getCreateListResourceUrl(r, opt.Namespace)
 
 	query := map[string]string{
 		"page":           strconv.FormatInt(opt.Page, 10),
@@ -155,80 +87,66 @@ func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[strin
 		"selector":       EncodeSelector(opt.Selector),
 		"field_selector": EncodeSelector(opt.FieldSelector),
 	}
-	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
-		return nil, err
-	}
+	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&result).Get(url)
 
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return result, fmtError(r, resp, err)
 }
 
 // 查询指定类型资源的总数 count
 func (c CMDBClient) CountResource(r cmdb.Resource, namespace string) (int, error) {
-	var url string
-	var body []byte
 	var err error
 	var count int
 
-	if url, err = c.getCountResourceUrl(r); err != nil {
-		return count, err
-	}
+	url := c.getCountResourceUrl(r)
 	query := map[string]string{"namespace": namespace}
-	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
-		return count, err
-	}
-	if count, err = strconv.Atoi(string(body)); err != nil {
-		return count, err
-	}
-	return count, nil
+	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&count).Get(url)
+
+	return count, fmtError(r, resp, err)
 }
 
 // 查询指定类型资源的所有名称 names
 func (c CMDBClient) GetResourceNames(r cmdb.Resource, namespace string) ([]string, error) {
-	var url string
-	var body []byte
 	var err error
 	var names []string
 
-	if url, err = c.getResourceNamesUrl(r); err != nil {
-		return names, err
-	}
+	url := c.getResourceNamesUrl(r)
 	query := map[string]string{"namespace": namespace}
-	if body, _, err = DoHttpRequest(HttpRequestArgs{Method: "GET", Url: url, Query: query}); err != nil {
-		return names, err
-	}
-	if err = json.Unmarshal(body, &names); err != nil {
-		return nil, err
-	}
-	return names, nil
+	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&names).Get(url)
+
+	return names, fmtError(r, resp, err)
 }
 
-// 格式化 CRUD 的错误信息
-func fmtCURDError(r cmdb.Resource, name, namespace string, err error) error {
+// 格式化错误信息
+func fmtError(r cmdb.Resource, resp *req.Response, err error) error {
+	if err != nil {
+		return err
+	}
+	meta := r.GetMeta()
+	name := meta.Name
+	namespace := meta.Namespace
 	lkind := LowerKind(r)
-	switch e := err.(type) {
-	case cmdb.ServerError:
-		switch e.StatusCode {
+	if resp.StatusCode >= 400 {
+		switch resp.StatusCode {
+		default:
+			return cmdb.ServerError{Path: resp.Request.URL.Host, StatusCode: resp.StatusCode, Message: resp.String()}
 		case 422:
-			return cmdb.ResourceValidateError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace, Message: e.Message}
+			return cmdb.ResourceValidateError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 		case 400:
-			if ok, _ := regexp.MatchString("reference", e.Message); ok {
-				return cmdb.ResourceReferencedError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace, Message: e.Message}
+			if ok, _ := regexp.MatchString("reference", resp.String()); ok {
+				return cmdb.ResourceReferencedError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
-			if ok, _ := regexp.MatchString("already exist", e.Message); ok {
-				return cmdb.ResourceAlreadyExistError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace, Message: e.Message}
+			if ok, _ := regexp.MatchString("already exist", resp.String()); ok {
+				return cmdb.ResourceAlreadyExistError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
 		case 404:
-			return cmdb.ResourceNotFoundError{Path: e.Path, Kind: lkind, Name: name, Namespace: namespace}
+			return cmdb.ResourceNotFoundError{Path: resp.Request.URL.Host, Kind: lkind, Name: name, Namespace: namespace}
 		}
 	}
-	return err
+	return nil
 }
 
 // 更新/查询/读取 的 URL
-func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) (string, error) {
+func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) string {
 	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), name)
 	} else {
@@ -237,7 +155,7 @@ func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) (
 }
 
 // 创建/查询列表 的 URL
-func (c CMDBClient) getCreateListResourceUrl(r cmdb.Resource, namespace string) (string, error) {
+func (c CMDBClient) getCreateListResourceUrl(r cmdb.Resource, namespace string) string {
 	if r.GetMeta().Namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 	} else {
@@ -245,11 +163,11 @@ func (c CMDBClient) getCreateListResourceUrl(r cmdb.Resource, namespace string) 
 	}
 }
 
-func (c CMDBClient) getCountResourceUrl(r cmdb.Resource) (string, error) {
+func (c CMDBClient) getCountResourceUrl(r cmdb.Resource) string {
 	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "count", "/")
 }
 
-func (c CMDBClient) getResourceNamesUrl(r cmdb.Resource) (string, error) {
+func (c CMDBClient) getResourceNamesUrl(r cmdb.Resource) string {
 	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "names", "/")
 }
 

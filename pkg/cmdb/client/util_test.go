@@ -1,21 +1,28 @@
 package client
 
 import (
+	"encoding/json"
 	"goTool/pkg/cmdb"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStructToMapUnsupportedType(t *testing.T) {
+	var out map[string]any
+	ch := make(chan int)
+	err := StructToMap(ch, &out)
+	assert.IsType(t, &json.UnsupportedTypeError{}, err)
+}
+
 func TestUrlJoin(t *testing.T) {
 	baseUrl := "http://123.com/api/v1"
 	expectedUrl := "http://123.com/api/v1/apps/dev-app/"
-	url, err := UrlJoin(baseUrl, "apps", "dev-app/")
+	url := UrlJoin(baseUrl, "apps", "dev-app/")
 	assert.Equal(t, expectedUrl, url)
-	assert.NoError(t, err)
 }
 
-func TestPath(t *testing.T) {
+func TestGetMapValueByPath(t *testing.T) {
 	m := map[string]any{
 		"foo": map[string]any{
 			"bar": map[string]any{
@@ -28,13 +35,13 @@ func TestPath(t *testing.T) {
 	assert.Equal(t, "hello", v)
 }
 
-func TestPathRootNil(t *testing.T) {
+func TestGetMapValueByPathRootNil(t *testing.T) {
 	m := map[string]any{}
 	v := GetMapValueByPath(m, "foo.bar.baz.some.other.thing")
 	assert.Equal(t, nil, v)
 }
 
-func TestPathNil(t *testing.T) {
+func TestGetMapValueByPathNil(t *testing.T) {
 	m := map[string]any{
 		"foo": map[string]any{
 			"bar": map[string]any{
@@ -66,13 +73,4 @@ func TestSetMapValueByPathRootNil(t *testing.T) {
 	path := "foo.bar.baz.some.other.thing"
 	err := SetMapValueByPath(m, path, "")
 	assert.Error(t, err, cmdb.MapKeyPathError{KeyPath: path})
-}
-
-type Metadata struct {
-	Name   string
-	Labels map[string]string
-}
-
-type Pod struct {
-	Metadata Metadata
 }

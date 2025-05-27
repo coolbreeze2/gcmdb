@@ -28,18 +28,16 @@ func applyCmdHandle(c *cobra.Command) {
 	filePath, _ := c.Flags().GetString("filename")
 	var resources []cmdb.Resource
 
-	if info, err := os.Stat(filePath); err != nil {
-		CheckError(err)
+	info, err := os.Stat(filePath)
+	CheckError(err)
+	if info.IsDir() {
+		resources, err = client.ParseResourceFromDir(filePath)
 	} else {
-		if info.IsDir() {
-			resources, err = client.ParseResourceFromDir(filePath)
-		} else {
-			var resource cmdb.Resource
-			resource, err = client.ParseResourceFromFile(filePath)
-			resources = append(resources, resource)
-		}
-		CheckError(err)
+		var resource cmdb.Resource
+		resource, err = client.ParseResourceFromFile(filePath)
+		resources = append(resources, resource)
 	}
+	CheckError(err)
 	CheckError(checkResourceTypeExist(resources))
 	sortResource(resources)
 	applyResources(resources)
@@ -53,15 +51,8 @@ func addApplyFlags(c *cobra.Command) {
 func checkResourceTypeExist(resources []cmdb.Resource) error {
 	for _, v := range resources {
 		kind := v.GetKind()
-		exist := false
-		for _, k := range client.ResourceOrder {
-			if k == kind {
-				exist = true
-			}
-		}
-		if !exist {
-			return cmdb.ResourceTypeError{Kind: kind}
-		}
+		_, err := cmdb.NewResourceWithKind(kind)
+		CheckError(err)
 	}
 	return nil
 }
@@ -82,27 +73,26 @@ func sortResource(resources []cmdb.Resource) error {
 
 func applyResources(resources []cmdb.Resource) {
 	for i := range resources {
-		applyResource(resources[i])
+		CheckError(applyResource(resources[i]))
 	}
 }
 
-func applyResource(r cmdb.Resource) {
-	metadata := r.GetMeta()
+func applyResource(r cmdb.Resource) error {
+	meta := r.GetMeta()
 	cli := client.DefaultCMDBClient
-	_, err := cli.ReadResource(r, metadata.Name, metadata.Namespace, 0)
+	_, err := cli.ReadResource(r, meta.Name, meta.Namespace, 0)
 	switch err.(type) {
-	default:
-		CheckError(err)
 	case cmdb.ResourceNotFoundError:
 		// 不存在，则创建
-		createUpdateResource(r, "CREATE")
+		return createUpdateResource(r, "CREATE")
 	case nil:
 		// 已存在，则更新
-		createUpdateResource(r, "UPDATE")
+		return createUpdateResource(r, "UPDATE")
 	}
+	return err
 }
 
-func createUpdateResource(r cmdb.Resource, action string) {
+func createUpdateResource(r cmdb.Resource, action string) error {
 	var result map[string]any
 	var err error
 
@@ -116,7 +106,9 @@ func createUpdateResource(r cmdb.Resource, action string) {
 	case "UPDATE":
 		result, err = cli.UpdateResource(r)
 	}
-	CheckError(err)
+	if err != nil {
+		return err
+	}
 
 	lkind := client.LowerKind(r)
 	if result == nil {
@@ -126,4 +118,5 @@ func createUpdateResource(r cmdb.Resource, action string) {
 	} else if action == "CREATE" {
 		fmt.Printf("%v/%v created\n", lkind, metadata.Name)
 	}
+	return nil
 }

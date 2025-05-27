@@ -18,17 +18,20 @@ import (
 // 创建资源
 func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 	var err error
+	var resp *req.Response
 	var resource, result map[string]any
 	meta := r.GetMeta()
 
-	if err = StructToMap(r, &resource); err != nil {
-		return nil, err
-	}
+	c.fmtError(r, resp, StructToMap(r, &resource))
 
 	url := c.getCreateListResourceUrl(r, meta.Namespace)
 	removeResourceManageFields(resource)
 
-	resp, err := req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
+	if err = Validate(r); err != nil {
+		return nil, err
+	}
+
+	resp, err = req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
 	return result, c.fmtError(r, resp, err)
 }
@@ -36,17 +39,20 @@ func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 // 更新资源
 func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
 	var err error
+	var resp *req.Response
 	var resource, result map[string]any
 	meta := r.GetMeta()
 
-	if err = StructToMap(r, &resource); err != nil {
-		return nil, err
-	}
+	c.fmtError(r, resp, StructToMap(r, &resource))
 
 	url := c.getURDResourceUrl(r, meta.Name, meta.Namespace)
 	removeResourceManageFields(resource)
 
-	resp, err := req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
+	if err = Validate(r); err != nil {
+		return nil, err
+	}
+
+	resp, err = req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
 	return result, c.fmtError(r, resp, err)
 }
@@ -118,28 +124,29 @@ func (c CMDBClient) GetResourceNames(r cmdb.Resource, namespace string) ([]strin
 
 // 格式化错误信息
 func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) error {
-	if err != nil {
+	if err != nil || resp == nil {
 		return err
 	}
 	meta := r.GetMeta()
 	name := meta.Name
 	namespace := meta.Namespace
 	lkind := LowerKind(r)
+	uri := c.getCMDBAPIURL()
 	if resp.StatusCode >= 400 {
 		switch resp.StatusCode {
-		default:
-			return cmdb.ServerError{Path: c.getCMDBAPIURL(), StatusCode: resp.StatusCode, Message: resp.String()}
 		case 422:
-			return cmdb.ResourceValidateError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
+			return cmdb.ResourceValidateError{Path: uri, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 		case 400:
 			if ok, _ := regexp.MatchString("reference", resp.String()); ok {
-				return cmdb.ResourceReferencedError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
+				return cmdb.ResourceReferencedError{Path: uri, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
 			if ok, _ := regexp.MatchString("already exist", resp.String()); ok {
-				return cmdb.ResourceAlreadyExistError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
+				return cmdb.ResourceAlreadyExistError{Path: uri, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
 		case 404:
-			return cmdb.ResourceNotFoundError{Path: c.getCMDBAPIURL(), Kind: lkind, Name: name, Namespace: namespace}
+			return cmdb.ResourceNotFoundError{Path: uri, Kind: lkind, Name: name, Namespace: namespace}
+		default:
+			return cmdb.ServerError{Path: uri, StatusCode: resp.StatusCode, Message: resp.String()}
 		}
 	}
 	return nil
@@ -182,6 +189,12 @@ func LowerKind(r cmdb.Resource) string {
 	return strings.ToLower(r.GetKind()) + "s"
 }
 
+// 字段校验
+func Validate(r cmdb.Resource) error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	return validate.Struct(r)
+}
+
 // 解析 Selector map to string
 func EncodeSelector(selector map[string]string) string {
 	var pairs []string
@@ -222,48 +235,50 @@ func removeResourceManageFields(r map[string]any) {
 }
 
 func ParseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {
+	var err error
 	var objs []cmdb.Resource
-	entries, err := os.ReadDir(dirPath)
-	if err != nil {
+	var entries []os.DirEntry
+	if entries, err = os.ReadDir(dirPath); err != nil {
 		return nil, err
 	}
 	for _, e := range entries {
 		filePath := path.Join(dirPath, e.Name())
-		if obj, err := ParseResourceFromFile(filePath); err == nil {
-			objs = append(objs, obj)
-		} else {
-			return nil, err
+		var obj cmdb.Resource
+		if obj, err = ParseResourceFromFile(filePath); err != nil {
+			return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
 		}
+		objs = append(objs, obj)
 	}
 	return objs, nil
 }
 
 func ParseResourceFromFile(filePath string) (cmdb.Resource, error) {
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	file, err := os.ReadFile(filePath)
-	if err != nil {
+	var file []byte
+	var err error
+	if file, err = os.ReadFile(filePath); err != nil {
 		return nil, err
 	}
+
+	return ParseResourceFromByte(file)
+}
+
+func ParseResourceFromByte(b []byte) (cmdb.Resource, error) {
+	var r cmdb.Resource
+	var err error
 	var jsonObj map[string]any
-	if err = yaml.Unmarshal(file, &jsonObj); err != nil {
+	if err = yaml.Unmarshal(b, &jsonObj); err != nil {
 		return nil, err
 	}
 	kind := jsonObj["kind"].(string)
 
-	o, err := cmdb.NewResourceWithKind(kind)
-
-	if err != nil {
+	if r, err = cmdb.NewResourceWithKind(kind); err != nil {
 		return nil, err
 	}
 
 	// 不允许设置额外字段
-	if err := yaml.UnmarshalWithOptions(file, o, yaml.DisallowUnknownField()); err != nil {
-		return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
+	if err := yaml.UnmarshalWithOptions(b, r, yaml.DisallowUnknownField()); err != nil {
+		return nil, err
 	}
 
-	if err = validate.Struct(o); err != nil {
-		return nil, fmt.Errorf("%s when parse file %s", err.Error(), filePath)
-	}
-
-	return o, nil
+	return r, nil
 }

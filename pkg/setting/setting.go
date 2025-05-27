@@ -30,6 +30,9 @@ func NewSetting() (*Setting, error) {
 		return nil, err
 	}
 
+	// 环境变量优先级高于配置文件
+	viper.AutomaticEnv()
+
 	return &Setting{vp}, nil
 }
 

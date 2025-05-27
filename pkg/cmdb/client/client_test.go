@@ -1,11 +1,15 @@
 package client
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"goTool/pkg/cmdb"
+	"io/fs"
 	"net/url"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +37,11 @@ func testReadResource(t *testing.T, o cmdb.Resource, name, namespace string) {
 func testListResource(t *testing.T, o cmdb.Resource) {
 	objs, err := DefaultCMDBClient.ListResource(o, &ListOptions{})
 	assert.Less(t, 0, len(objs))
+	assert.NoError(t, err)
+
+	// test selector
+	objs, err = DefaultCMDBClient.ListResource(o, &ListOptions{Selector: map[string]string{"x": "y"}})
+	assert.LessOrEqual(t, 0, len(objs))
 	assert.NoError(t, err)
 }
 
@@ -89,10 +98,64 @@ func testDeleteResource(t *testing.T, o cmdb.Resource, name, namespace string) {
 	assert.IsType(t, cmdb.ResourceNotFoundError{}, err)
 }
 
-func TestWithBadAPIUrl(t *testing.T) {
+func TestParseResourceFromDirNotExist(t *testing.T) {
+	_, err := ParseResourceFromDir("a-not-exist-dir")
+	assert.IsType(t, &fs.PathError{}, err)
+}
+
+func TestParseResourceFromFileNotExist(t *testing.T) {
+	_, err := ParseResourceFromFile("a-not-exist-file")
+	assert.IsType(t, &fs.PathError{}, err)
+}
+
+func TestParseResourceFromByteYamlInvalid(t *testing.T) {
+	_, err := ParseResourceFromByte([]byte("{]"))
+	assert.IsType(t, &yaml.SyntaxError{}, err)
+}
+
+func TestParseResourceFromByteKindInvalid(t *testing.T) {
+	_, err := ParseResourceFromByte([]byte("kind: a-not-exist-kind"))
+	assert.IsType(t, cmdb.ResourceTypeError{}, err)
+}
+
+func TestParseResourceFromByteUnknownField(t *testing.T) {
+	_, err := ParseResourceFromByte([]byte(`apiVersion: v1alpha
+kind: Secret
+metadata:
+  name: test
+  extFiled: v111
+data:
+  privateKey: 'dGhpcyBpcyBhIHByaXZhdGVLZXkK'`))
+	assert.IsType(t, &yaml.UnknownFieldError{}, err)
+}
+
+func TestReadResourceWithBadAPIUrl(t *testing.T) {
 	cli := NewCMDBClient(":/bad-url.com")
-	_, err := cli.CreateResource(cmdb.NewApp())
+	_, err := cli.ReadResource(cmdb.NewApp(), "go-app", "", 0)
 	assert.IsType(t, &url.Error{}, err)
+}
+
+func TestCreateValidateError(t *testing.T) {
+	_, err := DefaultCMDBClient.CreateResource(cmdb.NewApp())
+	assert.IsType(t, validator.ValidationErrors{}, err)
+}
+
+func TestCreateValidateServerError(t *testing.T) {
+	s := cmdb.NewSecret()
+	s.Metadata.Name = "a-test-secret"
+	s.Data = map[string]string{"xyz": "111"}
+	_, err := DefaultCMDBClient.CreateResource(s)
+	assert.IsType(t, cmdb.ResourceValidateError{}, err)
+}
+
+func TestUpdateValidateError(t *testing.T) {
+	_, err := DefaultCMDBClient.UpdateResource(cmdb.NewApp())
+	assert.IsType(t, validator.ValidationErrors{}, err)
+}
+
+func TestListInvalidateLabelSelector(t *testing.T) {
+	_, err := DefaultCMDBClient.ListResource(cmdb.NewApp(), &ListOptions{Selector: map[string]string{"x": "1", "y": "="}})
+	assert.IsType(t, cmdb.ServerError{}, err)
 }
 
 func TestCreateResource(t *testing.T) {
@@ -132,6 +195,15 @@ func TestReadResourceNoNamespace(t *testing.T) {
 	namspace := "not-exist-namespace"
 	app.Metadata.Namespace = namspace
 	_, err := cli.ReadResource(app, "go-app", namspace, 0)
+	assert.EqualError(t, cmdb.ResourceNotFoundError{Path: cli.getCMDBAPIURL(), Kind: "apps", Namespace: namspace}, err.Error())
+}
+
+func TestListResourceNoNamespace(t *testing.T) {
+	cli := CMDBClient{}
+	app := cmdb.NewApp()
+	namspace := "not-exist-namespace"
+	app.Metadata.Namespace = namspace
+	_, err := cli.ListResource(app, &ListOptions{Namespace: namspace})
 	assert.EqualError(t, cmdb.ResourceNotFoundError{Path: cli.getCMDBAPIURL(), Kind: "apps", Namespace: namspace}, err.Error())
 }
 
@@ -193,7 +265,7 @@ func TestUpdateResource(t *testing.T) {
 		value                       any
 	}
 	cases := []Case{
-		// {cmdb.NewSecret(), "test", "", "data.privateKey", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewSecret(), "test", "", "data.privateKey", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
 		{cmdb.NewDatacenter(), "test", "", "spec.provider", "huawei-cloud"},
 		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},

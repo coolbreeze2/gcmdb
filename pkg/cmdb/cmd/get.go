@@ -73,12 +73,12 @@ func getCmdHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 	CheckError(err)
 
 	switch outputFmt {
-	default:
-		outputFmtSimple(resources, r)
 	case "json":
 		outputFmtJson(resources)
 	case "yaml":
 		outputFmtYaml(resources)
+	default:
+		outputFmtSimple(resources, r)
 	}
 }
 

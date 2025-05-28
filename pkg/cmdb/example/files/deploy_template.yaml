@@ -1,0 +1,88 @@
+apiVersion: v1alpha
+kind: DeployTemplate
+metadata:
+  name: docker-compose-test
+  namespace: test
+  labels: {}
+spec:
+  command:
+    - docker-compose
+  deployArgs: >
+    --file docker-compose.yml
+    up -d --wait --timeout 120
+data:
+  values.yml: |
+    containerCommand:
+    - "/bin/sh"
+    - "-c"
+    - "cd /opt/ansible && ansible-playbook --diff -v --ssh-common-args='-o StrictHostKeyChecking=no' -i inventory.yaml java-backend.yaml"
+    image:
+      registry: ${ image_registry }
+      repository: devops/ansible-app-deploy
+      tag: dev-0.0.1
+    containerEnv:
+    - name: ALIBABA_CLOUD_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          key: ALIBABA_CLOUD_ACCESS_KEY_ID
+          name: aliyun-ak
+    - name: ALIBABA_CLOUD_ACCESS_KEY_SECRET
+      valueFrom:
+        secretKeyRef:
+          key: ALIBABA_CLOUD_ACCESS_KEY_SECRET
+          name: aliyun-ak
+    podLabels:
+      app.cmdb/instance: ${ app_instance_name }
+    extraVolumeMounts:
+    - name: localtime
+      mountPath: /etc/localtime
+    - name: id-rsa
+      mountPath: /root/.ssh/id_rsa
+      subPath: id_rsa
+    - name: data
+      mountPath: /opt/ansible/inventory.yaml
+      subPath: inventory.yaml
+    volumesConfigMapItems:
+    - key: inventory.yaml
+      path: inventory.yaml
+    configMapData:
+      inventory.yaml: |
+        app:
+          hosts:
+        {%- if hostnode is defined -%}
+        {% set host_nodes = host_nodes | selectattr('metadata.name', 'in', hostnode) | list %}
+        {%- endif -%}
+        {%- for host_node in host_nodes %}
+            ${ host_node.metadata.name }:
+              ansible_host: ${ host_node.spec.ip }
+              ansible_user: root
+        {%- endfor %}
+          vars:
+            docker_compose_type: python
+            docker_compose_path: /usr/local/bin/docker-compose
+            app: ${ app }
+            container_name: ${ container_name }
+            port: ${ port }
+            health_path: ${ health_path }
+            command:
+              ${ command | to_yaml | trim | indent(14) }
+            args:
+              ${ args | to_yaml | trim | indent(14) }
+            env:
+              ${ env | to_yaml | trim | indent(14) }
+            healthcheck:
+              ${ healthcheck | to_yaml | trim | indent(14) }
+            image_registry: ${ image_registry }
+            image: ${ image }
+            user: ${ user }
+            volumes:
+              ${ volumes | to_yaml | trim | indent(14) }
+            minio_url: ${ minio_url }
+            docker_username: ${ docker_username }
+            docker_password: ${ docker_password }
+            eureka_url: ${ eureka_url }
+            app_down_secret: ${ app_down_secret }
+            only_restart: ${ only_restart | default(false) }
+            host_restart: ${ host_restart | default(false) }
+            ecs_restart: ${ ecs_restart | default(false) }
+            ecs_instance_ids: ${ host_nodes | map(attribute='spec.id') | list }

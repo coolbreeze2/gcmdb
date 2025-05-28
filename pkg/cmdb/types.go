@@ -25,6 +25,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"configcenter":      NewConfigCenter(),
 		"deployplatform":    NewDeployPlatform(),
 		"namespace":         NewNamespace(),
+		"deploytemplate":    NewDeployTemplate(),
 		"project":           NewProject(),
 		"app":               NewApp(),
 	}
@@ -79,6 +80,12 @@ func NewConfigCenter() *ConfigCneter {
 func NewDeployPlatform() *DeployPlatform {
 	return &DeployPlatform{
 		ResourceBase: *NewResourceBase("DeployPlatform", ""),
+	}
+}
+
+func NewDeployTemplate() *DeployTemplate {
+	return &DeployTemplate{
+		ResourceBase: *NewResourceBase("DeployTemplate", ""),
 	}
 }
 
@@ -387,6 +394,25 @@ func (r DeployPlatform) GetKind() string {
 }
 
 func (r DeployPlatform) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type DeployTemplateSpec struct {
+	Command    []string `json:"command" validate:"required"`
+	DeployArgs string   `json:"deployArgs" validate:"required"`
+}
+
+type DeployTemplate struct {
+	ResourceBase `json:",inline"`
+	Spec         DeployTemplateSpec `json:"spec" validate:"required"`
+	Data         map[string]string  `json:"data" validate:"required"`
+}
+
+func (r DeployTemplate) GetKind() string {
+	return r.Kind
+}
+
+func (r DeployTemplate) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

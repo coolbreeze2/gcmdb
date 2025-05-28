@@ -35,13 +35,13 @@ func testReadResource(t *testing.T, o cmdb.Resource, name, namespace string) {
 	assert.NoError(t, err)
 }
 
-func testListResource(t *testing.T, o cmdb.Resource) {
-	objs, err := DefaultCMDBClient.ListResource(o, &ListOptions{})
+func testListResource(t *testing.T, o cmdb.Resource, namespace string) {
+	objs, err := DefaultCMDBClient.ListResource(o, &ListOptions{Namespace: namespace})
 	assert.Less(t, 0, len(objs))
 	assert.NoError(t, err)
 
 	// test selector
-	objs, err = DefaultCMDBClient.ListResource(o, &ListOptions{Selector: map[string]string{"x": "y"}})
+	objs, err = DefaultCMDBClient.ListResource(o, &ListOptions{Namespace: namespace, Selector: map[string]string{"x": "y"}})
 	assert.LessOrEqual(t, 0, len(objs))
 	assert.NoError(t, err)
 }
@@ -190,6 +190,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewDatacenter(), "test", ""},
 		{cmdb.NewZone(), "test", ""},
 		{cmdb.NewNamespace(), "test", ""},
+		{cmdb.NewDeployTemplate(), "docker-compose-test", "test"},
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewHelmRepository(), "test", ""},
@@ -211,36 +212,32 @@ func TestReadResourceNoNamespace(t *testing.T) {
 	namspace := "not-exist-namespace"
 	app.Metadata.Namespace = namspace
 	_, err := cli.ReadResource(app, "go-app", namspace, 0)
-	assert.EqualError(t, cmdb.ResourceNotFoundError{Path: cli.getCMDBAPIURL(), Kind: "apps", Namespace: namspace}, err.Error())
-}
-
-func TestListResourceNoNamespace(t *testing.T) {
-	cli := CMDBClient{}
-	app := cmdb.NewApp()
-	namspace := "not-exist-namespace"
-	app.Metadata.Namespace = namspace
-	_, err := cli.ListResource(app, &ListOptions{Namespace: namspace})
-	assert.EqualError(t, cmdb.ResourceNotFoundError{Path: cli.getCMDBAPIURL(), Kind: "apps", Namespace: namspace}, err.Error())
+	assert.ErrorContains(t, err, fmt.Sprintf("%s/apps/ not found at", namspace))
 }
 
 func TestListResource(t *testing.T) {
 	TestCreateResource(t)
-	cases := []cmdb.Resource{
-		cmdb.NewSecret(),
-		cmdb.NewDatacenter(),
-		cmdb.NewZone(),
-		cmdb.NewNamespace(),
-		cmdb.NewSCM(),
-		cmdb.NewHostNode(),
-		cmdb.NewHelmRepository(),
-		cmdb.NewContainerRegistry(),
-		cmdb.NewConfigCenter(),
-		cmdb.NewDeployPlatform(),
-		cmdb.NewApp(),
-		cmdb.NewProject(),
+	type Case struct {
+		o         cmdb.Resource
+		namespace string
+	}
+	cases := []Case{
+		{cmdb.NewSecret(), ""},
+		{cmdb.NewDatacenter(), ""},
+		{cmdb.NewZone(), ""},
+		{cmdb.NewNamespace(), ""},
+		{cmdb.NewDeployTemplate(), "test"},
+		{cmdb.NewSCM(), ""},
+		{cmdb.NewHostNode(), ""},
+		{cmdb.NewHelmRepository(), ""},
+		{cmdb.NewContainerRegistry(), ""},
+		{cmdb.NewConfigCenter(), ""},
+		{cmdb.NewDeployPlatform(), ""},
+		{cmdb.NewApp(), ""},
+		{cmdb.NewProject(), ""},
 	}
 	for i := range cases {
-		testListResource(t, cases[i])
+		testListResource(t, cases[i].o, cases[i].namespace)
 	}
 }
 
@@ -255,6 +252,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewDatacenter(), ""},
 		{cmdb.NewZone(), ""},
 		{cmdb.NewNamespace(), ""},
+		{cmdb.NewDeployTemplate(), "test"},
 		{cmdb.NewSCM(), ""},
 		{cmdb.NewHostNode(), ""},
 		{cmdb.NewHelmRepository(), ""},
@@ -280,6 +278,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewDatacenter(), ""},
 		{cmdb.NewZone(), ""},
 		{cmdb.NewNamespace(), ""},
+		{cmdb.NewDeployTemplate(), "test"},
 		{cmdb.NewSCM(), ""},
 		{cmdb.NewHostNode(), ""},
 		{cmdb.NewHelmRepository(), ""},
@@ -306,6 +305,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewDatacenter(), "test", "", "spec.provider", "huawei-cloud"},
 		{cmdb.NewZone(), "test", "", "spec.provider", "huawei-cloud"},
 		{cmdb.NewNamespace(), "test", "", "spec.bizEnv", RandomString(6)},
+		{cmdb.NewDeployTemplate(), "docker-compose-test", "test", "spec.deployArgs", RandomString(6)},
 		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
 		{cmdb.NewHostNode(), "test", "", "spec.id", RandomString(22)},
 		{cmdb.NewHelmRepository(), "test", "", "spec.auth", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
@@ -343,6 +343,7 @@ func TestDeleteResource(t *testing.T) {
 		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewZone(), "test", ""},
+		{cmdb.NewDeployTemplate(), "docker-compose-test", "test"},
 		{cmdb.NewNamespace(), "test", ""},
 		{cmdb.NewDatacenter(), "test", ""},
 		{cmdb.NewSecret(), "test", ""},

@@ -20,11 +20,10 @@ func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 	var err error
 	var resp *req.Response
 	var resource, result map[string]any
-	meta := r.GetMeta()
 
 	c.fmtError(r, resp, StructToMap(r, &resource))
 
-	url := c.getCreateListResourceUrl(r, meta.Namespace)
+	url := c.getCreateResourceUrl(r)
 	removeResourceManageFields(resource)
 
 	if err = Validate(r); err != nil {
@@ -85,7 +84,7 @@ func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[strin
 	var err error
 	var result []map[string]any
 
-	url := c.getCreateListResourceUrl(r, opt.Namespace)
+	url := c.getListResourceUrl(r, opt.Namespace)
 
 	query := map[string]string{
 		"page":           strconv.FormatInt(opt.Page, 10),
@@ -131,7 +130,7 @@ func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) err
 	name := meta.Name
 	namespace := meta.Namespace
 	lkind := LowerKind(r)
-	uri := c.getCMDBAPIURL()
+	uri := resp.Response.Request.URL.String()
 	if resp.StatusCode >= 400 {
 		switch resp.StatusCode {
 		case 422:
@@ -144,7 +143,7 @@ func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) err
 				return cmdb.ResourceAlreadyExistError{Path: uri, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 			}
 		case 404:
-			return cmdb.ResourceNotFoundError{Path: uri, Kind: lkind, Name: name, Namespace: namespace}
+			return cmdb.ResourceNotFoundError{Path: uri, Kind: lkind, Name: name, Namespace: namespace, Message: resp.String()}
 		default:
 			return cmdb.ServerError{Path: uri, StatusCode: resp.StatusCode, Message: resp.String()}
 		}
@@ -152,7 +151,7 @@ func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) err
 	return nil
 }
 
-// 更新/查询/读取 的 URL
+// 更新/查询/读取的 URL
 func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) string {
 	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), name)
@@ -161,9 +160,14 @@ func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) s
 	}
 }
 
-// 创建/查询列表 的 URL
-func (c CMDBClient) getCreateListResourceUrl(r cmdb.Resource, namespace string) string {
-	if r.GetMeta().Namespace == "" {
+// 创建的 URL
+func (c CMDBClient) getCreateResourceUrl(r cmdb.Resource) string {
+	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
+}
+
+// 查询列表的 URL
+func (c CMDBClient) getListResourceUrl(r cmdb.Resource, namespace string) string {
+	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 	} else {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), namespace, "/")

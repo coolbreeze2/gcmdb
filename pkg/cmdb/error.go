@@ -26,11 +26,12 @@ type ResourceNotFoundError struct {
 	Kind      string
 	Name      string
 	Namespace string
+	Message   string
 }
 
 func (o ResourceNotFoundError) Error() string {
 	return fmtNamespaceError(
-		fmt.Sprintf("%s/%s not found at %s", o.Kind, o.Name, o.Path),
+		fmt.Sprintf("%s/%s not found at %s %s", o.Kind, o.Name, o.Path, o.Message),
 		o.Namespace,
 	)
 }

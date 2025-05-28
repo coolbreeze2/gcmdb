@@ -18,6 +18,7 @@ func TestDeleteResource(t *testing.T) {
 		{"delete", "helmrepository", "test"},
 		{"delete", "hostnode", "test"},
 		{"delete", "scm", "gitlab-test"},
+		{"delete", "deploytemplate", "docker-compose-test", "-n", "test"},
 		{"delete", "namespace", "test"},
 		{"delete", "zone", "test"},
 		{"delete", "datacenter", "test"},
@@ -27,5 +28,8 @@ func TestDeleteResource(t *testing.T) {
 		RootCmd.SetArgs(cases[i])
 		err := RootCmd.Execute()
 		assert.NoError(t, err)
+		if flag := RootCmd.PersistentFlags().Lookup("namespace"); flag != nil {
+			flag.Value.Set("")
+		}
 	}
 }

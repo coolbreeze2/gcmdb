@@ -23,6 +23,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"helmrepository":    NewHelmRepository(),
 		"containerregistry": NewContainerRegistry(),
 		"configcenter":      NewConfigCenter(),
+		"deployplatform":    NewDeployPlatform(),
 		"namespace":         NewNamespace(),
 		"project":           NewProject(),
 		"app":               NewApp(),
@@ -72,6 +73,12 @@ func NewContainerRegistry() *ContainerRegistry {
 func NewConfigCenter() *ConfigCneter {
 	return &ConfigCneter{
 		ResourceBase: *NewResourceBase("ConfigCenter", ""),
+	}
+}
+
+func NewDeployPlatform() *DeployPlatform {
+	return &DeployPlatform{
+		ResourceBase: *NewResourceBase("DeployPlatform", ""),
 	}
 }
 
@@ -345,6 +352,41 @@ func (r ConfigCneter) GetKind() string {
 }
 
 func (r ConfigCneter) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type DeployPlatformKubernetesCluster struct {
+	CA     string `json:"ca" validate:"required,base64"`
+	Name   string `json:"name" validate:"required"`
+	Server string `json:"server" validate:"required,url"`
+}
+
+type DeployPlatformKubernetesUser struct {
+	ClientCert string `json:"client_cert" validate:"required,base64"`
+	ClientKey  string `json:"client_key" validate:"required,base64"`
+	Name       string `json:"name" validate:"required"`
+}
+
+type DeployPlatformKubernetes struct {
+	Cluster DeployPlatformKubernetesCluster `json:"cluster" validate:"required"`
+	User    DeployPlatformKubernetesUser    `json:"user" validate:"required"`
+}
+
+type DeployPlatformSpec struct {
+	Datacenter string                   `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Kubernetes DeployPlatformKubernetes `json:"kubernetes" validate:"required"`
+}
+
+type DeployPlatform struct {
+	ResourceBase `json:",inline"`
+	Spec         DeployPlatformSpec `json:"spec" validate:"required"`
+}
+
+func (r DeployPlatform) GetKind() string {
+	return r.Kind
+}
+
+func (r DeployPlatform) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

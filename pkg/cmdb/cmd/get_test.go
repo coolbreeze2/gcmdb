@@ -18,6 +18,7 @@ func TestGetResource(t *testing.T) {
 		{"helmrepository", "test"},
 		{"containerregistry", "harbor-test"},
 		{"configcenter", "apollo-test"},
+		{"deployplatform", "test"},
 		{"project", "go-devops"},
 		{"app", "go-app"},
 	}

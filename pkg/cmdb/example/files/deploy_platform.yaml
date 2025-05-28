@@ -1,0 +1,17 @@
+apiVersion: v1alpha
+kind: DeployPlatform
+metadata:
+  annotations: {}
+  labels: {}
+  name: test
+spec:
+  datacenter: test
+  kubernetes:
+    cluster:
+      ca: Y2EtZGF0YQo=
+      name: kubernetes
+      server: https://haproxy:6443
+    user:
+      client_cert: Y2xpZW50X2NlcnQtZGF0YQo=
+      client_key: Y2xpZW50X2tleS1kYXRhCg==
+      name: kubernetes-admin

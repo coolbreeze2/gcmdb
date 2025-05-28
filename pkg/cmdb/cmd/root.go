@@ -32,8 +32,10 @@ func init() {
 
 	objects := []cmdb.Resource{}
 	for _, kind := range global.ResourceOrder {
-		o, _ := cmdb.NewResourceWithKind(kind)
-		objects = append(objects, o)
+		o, err := cmdb.NewResourceWithKind(kind)
+		if err == nil {
+			objects = append(objects, o)
+		}
 	}
 	InitMutilGetCmd(objects)
 	InitMutilDeleteCmd(objects)

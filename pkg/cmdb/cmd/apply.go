@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"goTool/global"
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
 	"os"
@@ -60,7 +61,7 @@ func checkResourceTypeExist(resources []cmdb.Resource) error {
 // 根据资源优先级排序
 func sortResource(resources []cmdb.Resource) error {
 	orders := map[string]int{}
-	for i, v := range client.ResourceOrder {
+	for i, v := range global.ResourceOrder {
 		orders[v] = i
 	}
 	sort.Slice(resources, func(i, j int) bool {

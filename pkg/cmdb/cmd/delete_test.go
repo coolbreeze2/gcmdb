@@ -13,6 +13,7 @@ func TestDeleteResource(t *testing.T) {
 		{"delete", "app", "go-app"},
 		{"delete", "project", "go-devops"},
 		{"delete", "scm", "gitlab-test"},
+		{"delete", "namespace", "test"},
 		{"delete", "zone", "test"},
 		{"delete", "datacenter", "test"},
 		{"delete", "secret", "test"},

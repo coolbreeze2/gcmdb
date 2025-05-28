@@ -1,29 +1,5 @@
 package client
 
-var ResourceOrder = [...]string{
-	"Secret",
-	"Project",
-	"Datacenter",
-	"Zone",
-	"Namespace",
-	"SCM",
-	"HostNode",
-	"HelmRepository",
-	"ContainerRegistry",
-	"App",
-	"ConfigCenter",
-	"DeployPlatform",
-	"DeployTemplate",
-	"ResourceRange",
-	"Orchestration",
-	"AppDeployment",
-	"AppInstance",
-	"AppInstanceRun",
-	"VirtualNetwork",
-	"Subnet",
-	"DatabaseService",
-}
-
 var DefaultCMDBClient = &CMDBClient{}
 
 func NewCMDBClient(apiUrl string) *CMDBClient {

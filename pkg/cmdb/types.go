@@ -18,9 +18,10 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"secret":     NewSecret(),
 		"scm":        NewSCM(),
 		"datacenter": NewDatacenter(),
+		"zone":       NewZone(),
+		"namespace":  NewNamespace(),
 		"project":    NewProject(),
 		"app":        NewApp(),
-		"zone":       NewZone(),
 	}
 	if r, ok := kindMap[kind]; ok {
 		return r, nil
@@ -43,6 +44,12 @@ func NewDatacenter() *Datacenter {
 func NewZone() *Zone {
 	return &Zone{
 		ResourceBase: *NewResourceBase("Zone", ""),
+	}
+}
+
+func NewNamespace() *Namespace {
+	return &Namespace{
+		ResourceBase: *NewResourceBase("Namespace", ""),
 	}
 }
 
@@ -140,7 +147,7 @@ func (r Datacenter) GetMeta() ResourceMeta {
 
 type ZoneSpec struct {
 	Provider   string `json:"provider" validate:"required"`
-	Datacenter string `json:"datacenter" validate:"required"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
 }
 
 type Zone struct {
@@ -153,6 +160,25 @@ func (r Zone) GetKind() string {
 }
 
 func (r Zone) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type NamespaceSpec struct {
+	BizEnv     string `json:"bizEnv" validate:"required"`
+	BizUnit    string `json:"bizUnit" validate:"required"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
+}
+
+type Namespace struct {
+	ResourceBase `json:",inline"`
+	Spec         NamespaceSpec `json:"spec" validate:"required"`
+}
+
+func (r Namespace) GetKind() string {
+	return r.Kind
+}
+
+func (r Namespace) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 
@@ -193,7 +219,7 @@ func (r Project) GetMeta() ResourceMeta {
 }
 
 type AppSCM struct {
-	Name    string `json:"name" validate:"required"`
+	Name    string `json:"name" validate:"required,dns_rfc1035_label"`
 	Project string `json:"project" validate:"required"`
 	User    string `json:"user" validate:"required"`
 }

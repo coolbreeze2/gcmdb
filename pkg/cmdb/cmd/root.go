@@ -34,6 +34,7 @@ func init() {
 		cmdb.NewSCM(),
 		cmdb.NewDatacenter(),
 		cmdb.NewZone(),
+		cmdb.NewNamespace(),
 		cmdb.NewProject(),
 		cmdb.NewApp(),
 	}

@@ -11,6 +11,7 @@ func TestGetResource(t *testing.T) {
 	resources := [][]string{
 		{"secret", "test"},
 		{"datacenter", "test"},
+		{"zone", "test"},
 		{"scm", "gitlab-test"},
 		{"project", "go-devops"},
 		{"app", "go-app"},

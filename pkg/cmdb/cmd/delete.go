@@ -22,6 +22,7 @@ func InitMutilDeleteCmd(objs []cmdb.Resource) {
 }
 
 func newDeleteCmd(r cmdb.Resource) *cobra.Command {
+	// TODO: 支持 -f 从文件删除，类似 apply
 	kind := strings.ToLower(r.GetKind())
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s <name>...", kind),
@@ -29,14 +30,14 @@ func newDeleteCmd(r cmdb.Resource) *cobra.Command {
 		Long:  fmt.Sprintf("Delete %s", kind),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(c *cobra.Command, args []string) {
-			getDeleteHandle(c, r, args)
+			deleteCmdHandle(c, r, args)
 		},
 		ValidArgsFunction: CompleteFunc,
 	}
 	return cmd
 }
 
-func getDeleteHandle(c *cobra.Command, r cmdb.Resource, args []string) {
+func deleteCmdHandle(c *cobra.Command, r cmdb.Resource, args []string) {
 	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
 	var name string
 

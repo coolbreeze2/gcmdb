@@ -165,6 +165,7 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/scm.yaml",
 		"../example/files/project.yaml",
 		"../example/files/app.yaml",
+		"../example/files/zone.yaml",
 	}
 	for i := range cases {
 		testCreateResource(t, cases[i])
@@ -183,6 +184,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewApp(), "go-app", ""},
+		{cmdb.NewZone(), "test", ""},
 	}
 	for i := range cases {
 		testReadResource(t, cases[i].o, cases[i].name, cases[i].namespace)
@@ -270,6 +272,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
+		{cmdb.NewZone(), "test", "", "spec.provider", "huawei-cloud"},
 	}
 	for i := range cases {
 		testUpdateResource(
@@ -293,6 +296,7 @@ func TestDeleteResource(t *testing.T) {
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
+		{cmdb.NewZone(), "test", ""},
 		{cmdb.NewDatacenter(), "test", ""},
 		{cmdb.NewSecret(), "test", ""},
 	}

@@ -7,11 +7,13 @@ import (
 )
 
 func TestDeleteResource(t *testing.T) {
+	// 倒序删除
 	cases := [][]string{
 		{"apply", "-f", "../example/files"},
 		{"delete", "app", "go-app"},
 		{"delete", "project", "go-devops"},
 		{"delete", "scm", "gitlab-test"},
+		{"delete", "zone", "test"},
 		{"delete", "datacenter", "test"},
 		{"delete", "secret", "test"},
 	}

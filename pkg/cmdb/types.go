@@ -7,6 +7,11 @@ import (
 
 const APIVersion string = "v1alpha"
 
+type Resource interface {
+	GetKind() string
+	GetMeta() ResourceMeta
+}
+
 func NewResourceWithKind(kind string) (Resource, error) {
 	kind = strings.ToLower(kind)
 	kindMap := map[string]Resource{
@@ -15,6 +20,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"datacenter": NewDatacenter(),
 		"project":    NewProject(),
 		"app":        NewApp(),
+		"zone":       NewZone(),
 	}
 	if r, ok := kindMap[kind]; ok {
 		return r, nil
@@ -34,6 +40,12 @@ func NewDatacenter() *Datacenter {
 	}
 }
 
+func NewZone() *Zone {
+	return &Zone{
+		ResourceBase: *NewResourceBase("Zone", ""),
+	}
+}
+
 func NewSCM() *SCM {
 	return &SCM{
 		ResourceBase: *NewResourceBase("SCM", ""),
@@ -50,11 +62,6 @@ func NewApp() *App {
 	return &App{
 		ResourceBase: *NewResourceBase("App", ""),
 	}
-}
-
-type Resource interface {
-	GetKind() string
-	GetMeta() ResourceMeta
 }
 
 type ManagedFields struct {
@@ -128,6 +135,24 @@ func (r Datacenter) GetKind() string {
 }
 
 func (r Datacenter) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type ZoneSpec struct {
+	Provider   string `json:"provider" validate:"required"`
+	Datacenter string `json:"datacenter" validate:"required"`
+}
+
+type Zone struct {
+	ResourceBase `json:",inline"`
+	Spec         ZoneSpec `json:"spec" validate:"required"`
+}
+
+func (r Zone) GetKind() string {
+	return r.Kind
+}
+
+func (r Zone) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

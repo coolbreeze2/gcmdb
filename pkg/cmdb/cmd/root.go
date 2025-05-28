@@ -32,6 +32,7 @@ func init() {
 	objects := []cmdb.Resource{
 		cmdb.NewSecret(),
 		cmdb.NewSCM(),
+		cmdb.NewHostNode(),
 		cmdb.NewDatacenter(),
 		cmdb.NewZone(),
 		cmdb.NewNamespace(),

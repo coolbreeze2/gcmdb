@@ -18,14 +18,14 @@ func testCreateResource(t *testing.T, filePath string) {
 	assert.NoError(t, err)
 	obj, err := DefaultCMDBClient.CreateResource(r)
 	if err != nil {
-		assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err)
+		assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err, err.Error())
 	} else {
 		assert.NoError(t, err)
 		assert.IsType(t, map[string]any{}, obj)
 	}
 
 	_, err = DefaultCMDBClient.CreateResource(r)
-	assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err)
+	assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err, err.Error())
 }
 
 func testReadResource(t *testing.T, o cmdb.Resource, name, namespace string) {
@@ -165,6 +165,7 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/zone.yaml",
 		"../example/files/namespace.yaml",
 		"../example/files/scm.yaml",
+		"../example/files/hostnode.yaml",
 		"../example/files/project.yaml",
 		"../example/files/app.yaml",
 	}
@@ -185,6 +186,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewZone(), "test", ""},
 		{cmdb.NewNamespace(), "test", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
+		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewZone(), "test", ""},
@@ -220,6 +222,7 @@ func TestListResource(t *testing.T) {
 		cmdb.NewZone(),
 		cmdb.NewNamespace(),
 		cmdb.NewSCM(),
+		cmdb.NewHostNode(),
 		cmdb.NewApp(),
 		cmdb.NewProject(),
 	}
@@ -240,6 +243,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewZone(), ""},
 		{cmdb.NewNamespace(), ""},
 		{cmdb.NewSCM(), ""},
+		{cmdb.NewHostNode(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
 	}
@@ -260,6 +264,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewZone(), ""},
 		{cmdb.NewNamespace(), ""},
 		{cmdb.NewSCM(), ""},
+		{cmdb.NewHostNode(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
 	}
@@ -281,6 +286,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewZone(), "test", "", "spec.provider", "huawei-cloud"},
 		{cmdb.NewNamespace(), "test", "", "spec.bizEnv", RandomString(6)},
 		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
+		{cmdb.NewHostNode(), "test", "", "spec.id", RandomString(22)},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
 	}
@@ -305,6 +311,7 @@ func TestDeleteResource(t *testing.T) {
 	cases := []Case{
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewProject(), "go-devops", ""},
+		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewZone(), "test", ""},
 		{cmdb.NewNamespace(), "test", ""},

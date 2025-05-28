@@ -19,6 +19,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"scm":        NewSCM(),
 		"datacenter": NewDatacenter(),
 		"zone":       NewZone(),
+		"hostnode":   NewHostNode(),
 		"namespace":  NewNamespace(),
 		"project":    NewProject(),
 		"app":        NewApp(),
@@ -44,6 +45,12 @@ func NewDatacenter() *Datacenter {
 func NewZone() *Zone {
 	return &Zone{
 		ResourceBase: *NewResourceBase("Zone", ""),
+	}
+}
+
+func NewHostNode() *HostNode {
+	return &HostNode{
+		ResourceBase: *NewResourceBase("HostNode", ""),
 	}
 }
 
@@ -198,6 +205,57 @@ func (r SCM) GetKind() string {
 }
 
 func (r SCM) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type HostNodeDisk struct {
+	Name        string `json:"name" validate:"required"`
+	Status      string `json:"status" validate:"required"`
+	Category    string `json:"category" validate:"required"`
+	Performance string `json:"performance" validate:"required"`
+	Size        int    `json:"size" validate:"required"`
+	Type        string `json:"type" validate:"required"`
+	Device      string `json:"device" validate:"required"`
+}
+
+type HostNodeSpecConfiguration struct {
+	Type   string         `json:"type" validate:"required"`
+	Cpu    int            `json:"cpu" validate:"required"`
+	Memory string         `json:"memory" validate:"required"`
+	Disk   []HostNodeDisk `json:"disk" validate:"required"`
+}
+
+type HostNodeSpec struct {
+	Datacenter    string                    `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Zone          string                    `json:"zone" validate:"required,dns_rfc1035_label"`
+	Ip            string                    `json:"ip" validate:"required,ip"`
+	PublicIp      string                    `json:"publicip" validate:"required,ip"`
+	Hostname      string                    `json:"hostname" validate:"required,hostname"`
+	Id            string                    `json:"id" validate:"required"`
+	System        string                    `json:"system" validate:"required"`
+	Image         string                    `json:"image" validate:"required"`
+	Category      string                    `json:"category" validate:"required"`
+	AdminUser     string                    `json:"adminUser" validate:"required"`
+	Port          int                       `json:"port" validate:"required"`
+	Configuration HostNodeSpecConfiguration `json:"configuration" validate:"required"`
+}
+
+type HostNodeStatus struct {
+	Phase         string `json:"phase" validate:"required"`
+	ServiceStatus string `json:"servicestatus" validate:"required"`
+}
+
+type HostNode struct {
+	ResourceBase `json:",inline"`
+	Spec         HostNodeSpec   `json:"spec" validate:"required"`
+	Status       HostNodeStatus `json:"status" validte:"required"`
+}
+
+func (r HostNode) GetKind() string {
+	return r.Kind
+}
+
+func (r HostNode) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

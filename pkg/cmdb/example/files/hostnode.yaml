@@ -1,0 +1,36 @@
+apiVersion: v1alpha
+kind: HostNode
+metadata:
+  annotations: {}
+  labels:
+    app: dev-app
+    namespace: test
+    project: devops
+  name: test
+status:
+  phase: running
+  servicestatus: ready
+spec:
+  datacenter: test
+  zone: test
+  ip: 10.10.204.185
+  publicip: 120.25.76.71
+  hostname: devops-test
+  id: i-bp18pzwdymxxxyyymgup
+  configuration:
+    type: ecs.c5.xlarge
+    cpu: 4
+    memory: 8g
+    disk:
+      - name: d-bp18gn7hsixxxx7sn19u
+        status: use
+        category: cloud_essd
+        performance: PL0
+        size: 100
+        type: system
+        device: /dev/xvda
+  system: CentOS 7.8
+  image: centos_7_8_x64_20G_alibase_20xxxx14.vhd
+  category: CloudHost
+  adminUser: root
+  port: 22

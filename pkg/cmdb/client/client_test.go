@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"goTool/pkg/cmdb"
 	"io/fs"
 	"net/url"
@@ -81,7 +82,7 @@ func testUpdateResource(t *testing.T, o cmdb.Resource, name, namespace, updatePa
 	if oldVal == value {
 		assert.Equal(t, nil, newValue)
 	} else {
-		assert.Equal(t, value, newValue)
+		assert.Equal(t, value, newValue, fmt.Sprintf("%s %s %s", o.GetKind(), name, namespace))
 	}
 
 	// 重复执行，无变化
@@ -166,6 +167,7 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/namespace.yaml",
 		"../example/files/scm.yaml",
 		"../example/files/hostnode.yaml",
+		"../example/files/helm_repository.yaml",
 		"../example/files/project.yaml",
 		"../example/files/app.yaml",
 	}
@@ -187,6 +189,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewNamespace(), "test", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewHostNode(), "test", ""},
+		{cmdb.NewHelmRepository(), "test", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewZone(), "test", ""},
@@ -223,6 +226,7 @@ func TestListResource(t *testing.T) {
 		cmdb.NewNamespace(),
 		cmdb.NewSCM(),
 		cmdb.NewHostNode(),
+		cmdb.NewHelmRepository(),
 		cmdb.NewApp(),
 		cmdb.NewProject(),
 	}
@@ -244,6 +248,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewNamespace(), ""},
 		{cmdb.NewSCM(), ""},
 		{cmdb.NewHostNode(), ""},
+		{cmdb.NewHelmRepository(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
 	}
@@ -265,6 +270,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewNamespace(), ""},
 		{cmdb.NewSCM(), ""},
 		{cmdb.NewHostNode(), ""},
+		{cmdb.NewHelmRepository(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
 	}
@@ -287,6 +293,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewNamespace(), "test", "", "spec.bizEnv", RandomString(6)},
 		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
 		{cmdb.NewHostNode(), "test", "", "spec.id", RandomString(22)},
+		{cmdb.NewHelmRepository(), "test", "", "spec.auth", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
 	}
@@ -311,6 +318,7 @@ func TestDeleteResource(t *testing.T) {
 	cases := []Case{
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewProject(), "go-devops", ""},
+		{cmdb.NewHelmRepository(), "test", ""},
 		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewZone(), "test", ""},

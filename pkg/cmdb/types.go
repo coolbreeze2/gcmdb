@@ -15,14 +15,15 @@ type Resource interface {
 func NewResourceWithKind(kind string) (Resource, error) {
 	kind = strings.ToLower(kind)
 	kindMap := map[string]Resource{
-		"secret":     NewSecret(),
-		"scm":        NewSCM(),
-		"datacenter": NewDatacenter(),
-		"zone":       NewZone(),
-		"hostnode":   NewHostNode(),
-		"namespace":  NewNamespace(),
-		"project":    NewProject(),
-		"app":        NewApp(),
+		"secret":         NewSecret(),
+		"scm":            NewSCM(),
+		"datacenter":     NewDatacenter(),
+		"zone":           NewZone(),
+		"hostnode":       NewHostNode(),
+		"helmrepository": NewHelmRepository(),
+		"namespace":      NewNamespace(),
+		"project":        NewProject(),
+		"app":            NewApp(),
 	}
 	if r, ok := kindMap[kind]; ok {
 		return r, nil
@@ -51,6 +52,12 @@ func NewZone() *Zone {
 func NewHostNode() *HostNode {
 	return &HostNode{
 		ResourceBase: *NewResourceBase("HostNode", ""),
+	}
+}
+
+func NewHelmRepository() *HelmRepository {
+	return &HelmRepository{
+		ResourceBase: *NewResourceBase("HelmRepository", ""),
 	}
 }
 
@@ -256,6 +263,25 @@ func (r HostNode) GetKind() string {
 }
 
 func (r HostNode) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type HelmRepositorySpec struct {
+	Auth       string `json:"auth" validate:"required,base64"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Url        string `json:"url" validate:"required,url"`
+}
+
+type HelmRepository struct {
+	ResourceBase `json:",inline"`
+	Spec         HelmRepositorySpec `json:"spec" validate:"required"`
+}
+
+func (r HelmRepository) GetKind() string {
+	return r.Kind
+}
+
+func (r HelmRepository) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

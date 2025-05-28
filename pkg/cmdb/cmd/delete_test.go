@@ -12,6 +12,7 @@ func TestDeleteResource(t *testing.T) {
 		{"apply", "-f", "../example/files"},
 		{"delete", "app", "go-app"},
 		{"delete", "project", "go-devops"},
+		{"delete", "helmrepository", "test"},
 		{"delete", "hostnode", "test"},
 		{"delete", "scm", "gitlab-test"},
 		{"delete", "namespace", "test"},

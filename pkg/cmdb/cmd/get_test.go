@@ -15,6 +15,7 @@ func TestGetResource(t *testing.T) {
 		{"namespace", "test"},
 		{"scm", "gitlab-test"},
 		{"hostnode", "test"},
+		{"helmrepository", "test"},
 		{"project", "go-devops"},
 		{"app", "go-app"},
 	}

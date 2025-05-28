@@ -33,6 +33,7 @@ func init() {
 		cmdb.NewSecret(),
 		cmdb.NewSCM(),
 		cmdb.NewHostNode(),
+		cmdb.NewHelmRepository(),
 		cmdb.NewDatacenter(),
 		cmdb.NewZone(),
 		cmdb.NewNamespace(),

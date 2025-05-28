@@ -1,0 +1,10 @@
+apiVersion: v1alpha
+kind: HelmRepository
+metadata:
+  annotations: {}
+  labels: {}
+  name: test
+spec:
+  auth: cmVhZG9ubHk6cmVhZG9ubHkxMjMK
+  datacenter: test
+  url: https://harbor.dev.com/chartrepo/devops

@@ -17,6 +17,7 @@ func TestGetResource(t *testing.T) {
 		{"hostnode", "test"},
 		{"helmrepository", "test"},
 		{"containerregistry", "harbor-test"},
+		{"configcenter", "apollo-test"},
 		{"project", "go-devops"},
 		{"app", "go-app"},
 	}

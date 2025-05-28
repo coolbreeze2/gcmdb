@@ -22,6 +22,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"hostnode":          NewHostNode(),
 		"helmrepository":    NewHelmRepository(),
 		"containerregistry": NewContainerRegistry(),
+		"configcenter":      NewConfigCenter(),
 		"namespace":         NewNamespace(),
 		"project":           NewProject(),
 		"app":               NewApp(),
@@ -65,6 +66,12 @@ func NewHelmRepository() *HelmRepository {
 func NewContainerRegistry() *ContainerRegistry {
 	return &ContainerRegistry{
 		ResourceBase: *NewResourceBase("ContainerRegistry", ""),
+	}
+}
+
+func NewConfigCenter() *ConfigCneter {
+	return &ConfigCneter{
+		ResourceBase: *NewResourceBase("ConfigCenter", ""),
 	}
 }
 
@@ -315,6 +322,29 @@ func (r ContainerRegistry) GetKind() string {
 }
 
 func (r ContainerRegistry) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type ConfigCenterApollo struct {
+	Auth       string `json:"auth" validate:"required,base64"`
+	MetaServer string `json:"metaServer" validate:"required,url"`
+	Server     string `json:"server" validate:"required,url"`
+}
+
+type ConfigCenterSpec struct {
+	Apollo ConfigCenterApollo `json:"apollo" validate:"required"`
+}
+
+type ConfigCneter struct {
+	ResourceBase `json:",inline"`
+	Spec         ConfigCenterSpec `json:"spec" validate:"required"`
+}
+
+func (r ConfigCneter) GetKind() string {
+	return r.Kind
+}
+
+func (r ConfigCneter) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

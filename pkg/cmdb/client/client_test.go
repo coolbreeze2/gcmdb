@@ -169,6 +169,7 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/hostnode.yaml",
 		"../example/files/helm_repository.yaml",
 		"../example/files/container_registry.yaml",
+		"../example/files/config_center.yaml",
 		"../example/files/project.yaml",
 		"../example/files/app.yaml",
 	}
@@ -192,6 +193,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewHelmRepository(), "test", ""},
 		{cmdb.NewContainerRegistry(), "harbor-test", ""},
+		{cmdb.NewConfigCenter(), "apollo-test", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewZone(), "test", ""},
@@ -230,6 +232,7 @@ func TestListResource(t *testing.T) {
 		cmdb.NewHostNode(),
 		cmdb.NewHelmRepository(),
 		cmdb.NewContainerRegistry(),
+		cmdb.NewConfigCenter(),
 		cmdb.NewApp(),
 		cmdb.NewProject(),
 	}
@@ -253,6 +256,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewHostNode(), ""},
 		{cmdb.NewHelmRepository(), ""},
 		{cmdb.NewContainerRegistry(), ""},
+		{cmdb.NewConfigCenter(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
 	}
@@ -276,6 +280,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewHostNode(), ""},
 		{cmdb.NewHelmRepository(), ""},
 		{cmdb.NewContainerRegistry(), ""},
+		{cmdb.NewConfigCenter(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
 	}
@@ -300,6 +305,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewHostNode(), "test", "", "spec.id", RandomString(22)},
 		{cmdb.NewHelmRepository(), "test", "", "spec.auth", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
 		{cmdb.NewContainerRegistry(), "harbor-test", "", "spec.auth.password", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewConfigCenter(), "apollo-test", "", "spec.apollo.auth", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
 	}
@@ -324,6 +330,7 @@ func TestDeleteResource(t *testing.T) {
 	cases := []Case{
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewProject(), "go-devops", ""},
+		{cmdb.NewConfigCenter(), "apollo-test", ""},
 		{cmdb.NewContainerRegistry(), "harbor-test", ""},
 		{cmdb.NewHelmRepository(), "test", ""},
 		{cmdb.NewHostNode(), "test", ""},

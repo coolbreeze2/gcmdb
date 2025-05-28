@@ -1,0 +1,11 @@
+apiVersion: v1alpha
+kind: ConfigCenter
+metadata:
+  annotations: {}
+  labels: {}
+  name: apollo-test
+spec:
+  apollo:
+    auth: YXBvbGxvOmFkbWlu
+    metaServer: "http://apollo.dev.com:8761"
+    server: http://apollo.dev.com

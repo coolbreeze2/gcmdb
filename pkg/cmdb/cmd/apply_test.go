@@ -18,6 +18,7 @@ func TestApplyResource(t *testing.T) {
 		{"apply", "-f", "../example/files/scm.yaml"},
 		{"apply", "-f", "../example/files/hostnode.yaml"},
 		{"apply", "-f", "../example/files/helm_repository.yaml"},
+		{"apply", "-f", "../example/files/container_registry.yaml"},
 		{"apply", "-f", "../example/files/project.yaml"},
 		{"apply", "-f", "../example/files/app.yaml"},
 	}

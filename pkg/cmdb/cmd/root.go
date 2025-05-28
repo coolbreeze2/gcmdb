@@ -34,6 +34,7 @@ func init() {
 		cmdb.NewSCM(),
 		cmdb.NewHostNode(),
 		cmdb.NewHelmRepository(),
+		cmdb.NewContainerRegistry(),
 		cmdb.NewDatacenter(),
 		cmdb.NewZone(),
 		cmdb.NewNamespace(),

@@ -15,15 +15,16 @@ type Resource interface {
 func NewResourceWithKind(kind string) (Resource, error) {
 	kind = strings.ToLower(kind)
 	kindMap := map[string]Resource{
-		"secret":         NewSecret(),
-		"scm":            NewSCM(),
-		"datacenter":     NewDatacenter(),
-		"zone":           NewZone(),
-		"hostnode":       NewHostNode(),
-		"helmrepository": NewHelmRepository(),
-		"namespace":      NewNamespace(),
-		"project":        NewProject(),
-		"app":            NewApp(),
+		"secret":            NewSecret(),
+		"scm":               NewSCM(),
+		"datacenter":        NewDatacenter(),
+		"zone":              NewZone(),
+		"hostnode":          NewHostNode(),
+		"helmrepository":    NewHelmRepository(),
+		"containerregistry": NewContainerRegistry(),
+		"namespace":         NewNamespace(),
+		"project":           NewProject(),
+		"app":               NewApp(),
 	}
 	if r, ok := kindMap[kind]; ok {
 		return r, nil
@@ -58,6 +59,12 @@ func NewHostNode() *HostNode {
 func NewHelmRepository() *HelmRepository {
 	return &HelmRepository{
 		ResourceBase: *NewResourceBase("HelmRepository", ""),
+	}
+}
+
+func NewContainerRegistry() *ContainerRegistry {
+	return &ContainerRegistry{
+		ResourceBase: *NewResourceBase("ContainerRegistry", ""),
 	}
 }
 
@@ -282,6 +289,32 @@ func (r HelmRepository) GetKind() string {
 }
 
 func (r HelmRepository) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type BasicAuth struct {
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required,base64"`
+}
+
+type ContainerRegistrySpec struct {
+	Auth       BasicAuth `json:"auth" validate:"required"`
+	Datacenter string    `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Registry   string    `json:"registry" validate:"required,hostname"`
+	Type       string    `json:"type" validate:"required"`
+	Url        string    `json:"url" validate:"required,url"`
+}
+
+type ContainerRegistry struct {
+	ResourceBase `json:",inline"`
+	Spec         ContainerRegistrySpec `json:"spec" validate:"required"`
+}
+
+func (r ContainerRegistry) GetKind() string {
+	return r.Kind
+}
+
+func (r ContainerRegistry) GetMeta() ResourceMeta {
 	return r.Metadata
 }
 

@@ -1,0 +1,14 @@
+apiVersion: v1alpha
+kind: ContainerRegistry
+metadata:
+  annotations: {}
+  labels: {}
+  name: harbor-test
+spec:
+  auth:
+    password: cmVhZG9ubHk6cmVhZG9ubHkxMjMK
+    username: readonly
+  datacenter: test
+  registry: harbor.dev.com
+  type: harbor
+  url: https://harbor.dev.com

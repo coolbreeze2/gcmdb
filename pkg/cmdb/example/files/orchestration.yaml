@@ -1,0 +1,9 @@
+apiVersion: v1alpha
+kind: Orchestration
+metadata:
+  labels: {}
+  name: test
+spec:
+  name: "deploy/docker_deploy"
+  parameters:
+    skip_ci: true

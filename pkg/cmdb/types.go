@@ -29,6 +29,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"project":           NewProject(),
 		"app":               NewApp(),
 		"resourcerange":     NewResourceRange(),
+		"orchestration":     NewOrchestration(),
 	}
 	if r, ok := kindMap[kind]; ok {
 		return r, nil
@@ -117,6 +118,12 @@ func NewApp() *App {
 func NewResourceRange() *ResourceRange {
 	return &ResourceRange{
 		ResourceBase: *NewResourceBase("ResourceRange", ""),
+	}
+}
+
+func NewOrchestration() *Orchestration {
+	return &Orchestration{
+		ResourceBase: *NewResourceBase("Orchestration", ""),
 	}
 }
 
@@ -590,5 +597,23 @@ func (r ResourceRange) GetKind() string {
 }
 
 func (r ResourceRange) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type OrchestrationSpec struct {
+	Name       string         `json:"name" validate:"required"`
+	Parameters map[string]any `json:"parameters"`
+}
+
+type Orchestration struct {
+	ResourceBase `json:",inline"`
+	Spec         OrchestrationSpec `json:"spec" validate:"required"`
+}
+
+func (r Orchestration) GetKind() string {
+	return r.Kind
+}
+
+func (r Orchestration) GetMeta() ResourceMeta {
 	return r.Metadata
 }

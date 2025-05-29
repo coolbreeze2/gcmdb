@@ -149,6 +149,7 @@ func outputFmtJson(resources []map[string]any) {
 func outputFmtYaml(resources []map[string]any) {
 	var s []string
 	for _, r := range resources {
+		// TODO: 打印时忽略 nil 值字段
 		byts, _ := yaml.MarshalWithOptions(r, yaml.AutoInt())
 		s = append(s, string(byts))
 	}

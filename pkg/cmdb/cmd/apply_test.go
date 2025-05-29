@@ -25,6 +25,7 @@ func TestApplyResource(t *testing.T) {
 		{"apply", "-f", "../example/files/app.yaml"},
 		{"apply", "-f", "../example/files/deploy_template.yaml"},
 		{"apply", "-f", "../example/files/resource_range.yaml"},
+		{"apply", "-f", "../example/files/orchestration.yaml"},
 	}
 	for i := range cases {
 		RootCmd.SetArgs(cases[i])

@@ -23,6 +23,7 @@ func TestGetResource(t *testing.T) {
 		{"app", "go-app"},
 		{"deploytemplate", "docker-compose-test", "-n", "test"},
 		{"resourcerange", "test", "-n", "test"},
+		{"orchestration", "test"},
 	}
 
 	cases := [][]string{

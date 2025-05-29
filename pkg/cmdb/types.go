@@ -28,6 +28,7 @@ func NewResourceWithKind(kind string) (Resource, error) {
 		"deploytemplate":    NewDeployTemplate(),
 		"project":           NewProject(),
 		"app":               NewApp(),
+		"resourcerange":     NewResourceRange(),
 	}
 	if r, ok := kindMap[kind]; ok {
 		return r, nil
@@ -83,15 +84,15 @@ func NewDeployPlatform() *DeployPlatform {
 	}
 }
 
-func NewDeployTemplate() *DeployTemplate {
-	return &DeployTemplate{
-		ResourceBase: *NewResourceBase("DeployTemplate", ""),
-	}
-}
-
 func NewNamespace() *Namespace {
 	return &Namespace{
 		ResourceBase: *NewResourceBase("Namespace", ""),
+	}
+}
+
+func NewDeployTemplate() *DeployTemplate {
+	return &DeployTemplate{
+		ResourceBase: *NewResourceBase("DeployTemplate", ""),
 	}
 }
 
@@ -110,6 +111,12 @@ func NewProject() *Project {
 func NewApp() *App {
 	return &App{
 		ResourceBase: *NewResourceBase("App", ""),
+	}
+}
+
+func NewResourceRange() *ResourceRange {
+	return &ResourceRange{
+		ResourceBase: *NewResourceBase("ResourceRange", ""),
 	}
 }
 
@@ -454,5 +461,134 @@ func (r App) GetKind() string {
 }
 
 func (r App) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type AppDepConfigCenterApollo struct {
+	AppId   string `json:"appId"`
+	Cluster string `json:"cluster"`
+	Env     string `json:"env"`
+	Name    string `json:"name" validete:"omitempty,dns_rfc1035_label"`
+}
+
+type AppDepConfigCenter struct {
+	Apollo AppDepConfigCenterApollo `json:"apollo"`
+}
+
+type AppDepServiceDiscoveryEureka struct {
+	Application string `json:"application"`
+}
+
+type AppDepServiceDiscovery struct {
+	Eureka AppDepServiceDiscoveryEureka `json:"eureka"`
+}
+
+type ApplicationDependence struct {
+	ConfigCenter     AppDepConfigCenter     `json:"configCenter"`
+	ServiceDiscovery AppDepServiceDiscovery `json:"serviceDiscovery"`
+}
+
+type DPHelm struct {
+	Name         string `json:"name" validate:"omitempty,dns_rfc1035_label"`
+	Release      string `json:"release"`
+	Chart        string `json:"chart"`
+	ChartVersion string `json:"chartVersion"`
+}
+
+type DPKubernetes struct {
+	Name              string              `json:"name" validate:"omitempty,dns_rfc1035_label"`
+	ContainerRegistry DPContainerRegistry `json:"containerRegistry"`
+	Namespace         string              `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
+	Helm              DPHelm              `json:"helm"`
+}
+
+type DPContainerRegistry struct {
+	Name    string `json:"name" validate:"omitempty,dns_rfc1035_label"`
+	Project string `json:"project"`
+}
+
+type DeployPlatformDocker struct {
+	ContainerRegistry DPContainerRegistry `json:"containerRegistry"`
+	NodeName          string              `json:"nodeName,omitempty" validate:"omitempty,dns_rfc1035_label"`
+	NodeIP            string              `json:"nodeIP,omitempty" validate:"omitempty,ip"`
+	KubernetesAgent   DPKubernetes        `json:"kubernetesAgent"`
+}
+
+type ResourceRangeDeployPlatform struct {
+	Docker     *DeployPlatformDocker `json:"docker,omitempty"`
+	Kubernetes *DPKubernetes         `json:"kubernetes,omitempty"`
+}
+
+type ResourceRangeDeployTemplate struct {
+	Name       string            `json:"name"`
+	DeployArgs map[string]string `json:"deployArgs"`
+	Values     map[string]any    `json:"values"`
+}
+
+type MonitoringMetrics struct {
+	Path    string `json:"path"`
+	Port    string `json:"port"`
+	Scraped bool   `json:"scraped"`
+}
+
+type MonitoringProbeHttpGet struct {
+	Path string `json:"path"`
+	Port string `json:"port"`
+}
+
+type MonitoringProbe struct {
+	HttpGet MonitoringProbeHttpGet `json:"httpGet"`
+}
+
+type ResourceRangeMonitoring struct {
+	Metrics MonitoringMetrics `json:"metrics"`
+	Probe   MonitoringProbe   `json:"probe"`
+}
+
+type ResourceLimit struct {
+	Cpu    string `json:"cpu"`
+	Memory string `json:"memory"`
+}
+
+type ResourceRangeResources struct {
+	Limit   ResourceLimit `json:"limit"`
+	Request ResourceLimit `json:"request"`
+}
+
+type ServicePort struct {
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol"`
+}
+
+type ResourceRangePorts struct {
+	Http    ServicePort `json:"http"`
+	Metrics ServicePort `json:"metrics"`
+}
+
+type ResourceRangeSpec struct {
+	App                   string                      `json:"app" validate:"omitempty,dns_rfc1035_label"`
+	ApplicationDependence ApplicationDependence       `json:"applicationDependence"`
+	Args                  []string                    `json:"args"`
+	Env                   map[string]string           `json:"env"`
+	Command               []string                    `json:"command"`
+	DeployPlatform        ResourceRangeDeployPlatform `json:"deployPlatform"`
+	Monitoring            ResourceRangeMonitoring     `json:"monitoring"`
+	NodeSelector          map[string]string           `json:"nodeSelector"`
+	Project               string                      `json:"project" validate:"omitempty,dns_rfc1035_label"`
+	Resources             ResourceRangeResources      `json:"resources"`
+	Ports                 *ResourceRangePorts         `json:"ports,omitempty"`
+}
+
+type ResourceRange struct {
+	ResourceBase   `json:",inline"`
+	Spec           ResourceRangeSpec           `json:"spec" validate:"required"`
+	DeployTemplate ResourceRangeDeployTemplate `json:"deployTemplate"`
+}
+
+func (r ResourceRange) GetKind() string {
+	return r.Kind
+}
+
+func (r ResourceRange) GetMeta() ResourceMeta {
 	return r.Metadata
 }

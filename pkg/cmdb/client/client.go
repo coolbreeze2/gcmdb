@@ -151,7 +151,7 @@ func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) err
 	return nil
 }
 
-// 更新/查询/读取的 URL
+// 更新/查询/删除的 URL
 func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) string {
 	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), name)
@@ -170,7 +170,7 @@ func (c CMDBClient) getListResourceUrl(r cmdb.Resource, namespace string) string
 	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 	} else {
-		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), namespace, "/")
+		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), namespace)
 	}
 }
 

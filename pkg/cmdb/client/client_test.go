@@ -73,7 +73,7 @@ func testUpdateResource(t *testing.T, o cmdb.Resource, name, namespace, updatePa
 	jsonByte, err := json.Marshal(obj)
 	assert.NoError(t, err)
 	err = json.Unmarshal(jsonByte, &o)
-	assert.NoError(t, err)
+	assert.NoError(t, err, string(jsonByte))
 
 	obj1, err := DefaultCMDBClient.UpdateResource(o)
 	assert.NoError(t, err)
@@ -173,6 +173,8 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/deploy_platform.yaml",
 		"../example/files/project.yaml",
 		"../example/files/app.yaml",
+		"../example/files/deploy_template.yaml",
+		"../example/files/resource_range.yaml",
 	}
 	for i := range cases {
 		testCreateResource(t, cases[i])
@@ -199,7 +201,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewDeployPlatform(), "test", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewApp(), "go-app", ""},
-		{cmdb.NewZone(), "test", ""},
+		{cmdb.NewResourceRange(), "test", "test"},
 	}
 	for i := range cases {
 		testReadResource(t, cases[i].o, cases[i].name, cases[i].namespace)
@@ -235,6 +237,7 @@ func TestListResource(t *testing.T) {
 		{cmdb.NewDeployPlatform(), ""},
 		{cmdb.NewApp(), ""},
 		{cmdb.NewProject(), ""},
+		{cmdb.NewResourceRange(), "test"},
 	}
 	for i := range cases {
 		testListResource(t, cases[i].o, cases[i].namespace)
@@ -261,6 +264,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewDeployPlatform(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
+		{cmdb.NewResourceRange(), "test"},
 	}
 	for i := range cases {
 		testCountResource(t, cases[i].o, cases[i].namespace)
@@ -287,6 +291,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewDeployPlatform(), ""},
 		{cmdb.NewProject(), ""},
 		{cmdb.NewApp(), ""},
+		{cmdb.NewResourceRange(), "test"},
 	}
 	for i := range cases {
 		testGetResourceNames(t, cases[i].o, cases[i].namespace)
@@ -314,6 +319,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewDeployPlatform(), "test", "", "spec.kubernetes.cluster.ca", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
 		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
+		{cmdb.NewResourceRange(), "test", "test", "description", RandomString(6)},
 	}
 	for i := range cases {
 		testUpdateResource(
@@ -334,6 +340,8 @@ func TestDeleteResource(t *testing.T) {
 	}
 	// 优先级倒序
 	cases := []Case{
+		{cmdb.NewResourceRange(), "test", "test"},
+		{cmdb.NewDeployTemplate(), "docker-compose-test", "test"},
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewProject(), "go-devops", ""},
 		{cmdb.NewDeployPlatform(), "test", ""},
@@ -343,7 +351,6 @@ func TestDeleteResource(t *testing.T) {
 		{cmdb.NewHostNode(), "test", ""},
 		{cmdb.NewSCM(), "gitlab-test", ""},
 		{cmdb.NewZone(), "test", ""},
-		{cmdb.NewDeployTemplate(), "docker-compose-test", "test"},
 		{cmdb.NewNamespace(), "test", ""},
 		{cmdb.NewDatacenter(), "test", ""},
 		{cmdb.NewSecret(), "test", ""},

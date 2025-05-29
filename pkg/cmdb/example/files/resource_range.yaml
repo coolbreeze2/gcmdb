@@ -1,0 +1,98 @@
+apiVersion: v1alpha
+kind: ResourceRange
+metadata:
+  annotations: {}
+  labels: {}
+  name: test
+  namespace: test
+spec:
+  app: ''
+  applicationDependence:
+    configCenter:
+      apollo:
+        appId: ''
+        cluster: test
+        env: FAT
+        name: apollo-test
+    serviceDiscovery:
+      eureka:
+        application: ''
+  args:
+  - -XX:+HeapDumpBeforeFullGC
+  - -XX:+HeapDumpAfterFullGC
+  command:
+  - java
+  env: {}
+  deployPlatform:
+    docker:
+      containerRegistry:
+        name: harbor-test
+        project: devops
+      kubernetesAgent:
+        containerRegistry:
+          name: harbor-test
+          project: devops
+        name: test
+        namespace: prefect
+        helm:
+          name: test
+          chart: common-ansible-playbook
+          chartVersion: 1.0.0
+          release: ${ spec.app }-deploy
+  monitoring:
+    metrics:
+      path: metrics
+      port: 1234
+      scraped: false
+    probe:
+      httpGet:
+        path: actuator/health
+        port: 8000
+  nodeSelector: {}
+  project: ''
+  resources:
+    limit:
+      cpu: 1.0
+      memory: 2G
+    request:
+      cpu: 0.2
+      memory: 1G
+deployTemplate:
+  name: docker-compose-test
+  deployArgs: {}
+  values:
+    app: ${ spec.app }
+    container_name: ${ spec.app }_${ metadata.namespace }
+    port: ${ spec.monitoring.probe.httpGet.port }
+    health_path: ${ spec.monitoring.probe.httpGet.path }
+    command: ${ spec.command }
+    args: ${ spec.args }
+    env: ${ spec.env }
+    healthcheck:
+      interval: 5s
+      retries: 10
+      start_period: 10s
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:${ spec.monitoring.probe.httpGet.port }/${ spec.monitoring.probe.httpGet.path }
+      timeout: 1s
+    image_registry: ${ spec.deployPlatform.docker.containerRegistry.spec.registry }
+    image: ${ spec.deployPlatform.docker.containerRegistry.spec.registry }/${ spec.deployPlatform.docker.containerRegistry.project }/${ spec.app }:${ image_tag | default('ali-test') }
+    user: root
+    volumes:
+      - "/mnt/jars:/opt/java-packages"
+      - "/mnt/logs:/mnt/logs"
+      - "/etc/localtime:/etc/localtime:ro"
+    minio_url: http://minio-data.dev.com
+    docker_username: ${ spec.deployPlatform.docker.containerRegistry.spec.auth.username }
+    docker_password: ${ spec.deployPlatform.docker.containerRegistry.spec.auth.password }
+    eureka_url: http://eureka-url:8761
+    app_down_secret: down-secret
+    jenkins_build:
+      job_name: business-apps-external/${ spec.project }/${ spec.app }
+      parameters:
+        BRANCH: origin/release/test
+        DEPLOY_ENV: ali-test
+        VERSION: ${ version }

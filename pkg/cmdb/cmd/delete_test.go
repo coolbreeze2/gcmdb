@@ -10,6 +10,8 @@ func TestDeleteResource(t *testing.T) {
 	// 倒序删除
 	cases := [][]string{
 		{"apply", "-f", "../example/files"},
+		{"delete", "resourcerange", "test", "-n", "test"},
+		{"delete", "deploytemplate", "docker-compose-test", "-n", "test"},
 		{"delete", "app", "go-app"},
 		{"delete", "project", "go-devops"},
 		{"delete", "deployplatform", "test"},
@@ -18,7 +20,6 @@ func TestDeleteResource(t *testing.T) {
 		{"delete", "helmrepository", "test"},
 		{"delete", "hostnode", "test"},
 		{"delete", "scm", "gitlab-test"},
-		{"delete", "deploytemplate", "docker-compose-test", "-n", "test"},
 		{"delete", "namespace", "test"},
 		{"delete", "zone", "test"},
 		{"delete", "datacenter", "test"},

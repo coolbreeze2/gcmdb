@@ -1,0 +1,70 @@
+apiVersion: v1alpha
+kind: AppDeployment
+metadata:
+  annotations: {}
+  labels: {}
+  name: go-app
+  namespace: test
+spec:
+  orchestration: test
+  resourceRange: test
+  template:
+    metadata:
+      labels:
+        app: go-app
+        end_type: back
+        project: go-devops
+    spec:
+      app: go-app
+      applicationDependence:
+        configCenter:
+          apollo:
+            appId: go-app
+            cluster: test
+            env: FAT
+            name: apollo-test
+        serviceDiscovery:
+          eureka:
+            application: go-app
+      args:
+      - autoapp.py
+      - ${ spec.env.EMPTY_ARG }
+      command:
+      - python
+      env:
+        EMPTY_ARG: ''
+        ENV: test
+        JAVA_OPTS: ''
+        PORT: 8000
+        STARTUP_TIME: 10
+        ZONE: A
+        PRE_START_SLEEP_TIME: 0
+        PRE_STOP_SLEEP_TIME: 0
+        GC_LOG: -Xloggc:/mnt/logs/${ spec.app }/${ spec.app }-gc-$DATETIME.log
+      deployPlatform:
+        docker:
+          containerRegistry:
+            name: harbor-test
+            project: go-devops
+          nodeName: ''
+      monitoring:
+        metrics:
+          path: metrics
+          port: 1234
+          scraped: false
+        probe:
+          httpGet:
+            path: actuator/health
+            port: 8000
+      nodeSelector:
+        app: go-app
+        namespace: test
+        project: go-devops
+      project: go-devops
+      resources:
+        limit:
+          cpu: 1.0
+          memory: 2G
+        request:
+          cpu: 0.2
+          memory: 1G

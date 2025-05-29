@@ -236,6 +236,11 @@ func removeResourceManageFields(r map[string]any) {
 		delete(metadata, "namespace")
 	}
 	r["metadata"] = metadata
+	kind := r["kind"]
+	if kind == "AppDeployment" {
+		delete(r, "flow_run_id")
+		delete(r, "status")
+	}
 }
 
 func ParseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {

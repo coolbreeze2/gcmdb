@@ -176,6 +176,7 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/deploy_template.yaml",
 		"../example/files/resource_range.yaml",
 		"../example/files/orchestration.yaml",
+		"../example/files/appdeployment.yaml",
 	}
 	for i := range cases {
 		testCreateResource(t, cases[i])
@@ -204,6 +205,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewApp(), "go-app", ""},
 		{cmdb.NewResourceRange(), "test", "test"},
 		{cmdb.NewOrchestration(), "test", ""},
+		{cmdb.NewAppDeployment(), "go-app", "test"},
 	}
 	for i := range cases {
 		testReadResource(t, cases[i].o, cases[i].name, cases[i].namespace)
@@ -241,6 +243,7 @@ func TestListResource(t *testing.T) {
 		{cmdb.NewProject(), ""},
 		{cmdb.NewResourceRange(), "test"},
 		{cmdb.NewOrchestration(), ""},
+		{cmdb.NewAppDeployment(), "test"},
 	}
 	for i := range cases {
 		testListResource(t, cases[i].o, cases[i].namespace)
@@ -269,6 +272,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewApp(), ""},
 		{cmdb.NewResourceRange(), "test"},
 		{cmdb.NewOrchestration(), ""},
+		{cmdb.NewAppDeployment(), "test"},
 	}
 	for i := range cases {
 		testCountResource(t, cases[i].o, cases[i].namespace)
@@ -297,6 +301,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewApp(), ""},
 		{cmdb.NewResourceRange(), "test"},
 		{cmdb.NewOrchestration(), ""},
+		{cmdb.NewAppDeployment(), "test"},
 	}
 	for i := range cases {
 		testGetResourceNames(t, cases[i].o, cases[i].namespace)
@@ -326,6 +331,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
 		{cmdb.NewResourceRange(), "test", "test", "description", RandomString(6)},
 		{cmdb.NewOrchestration(), "test", "", "description", RandomString(6)},
+		{cmdb.NewAppDeployment(), "go-app", "test", "description", RandomString(6)},
 	}
 	for i := range cases {
 		testUpdateResource(
@@ -346,6 +352,7 @@ func TestDeleteResource(t *testing.T) {
 	}
 	// 优先级倒序
 	cases := []Case{
+		{cmdb.NewAppDeployment(), "go-app", "test"},
 		{cmdb.NewOrchestration(), "test", ""},
 		{cmdb.NewResourceRange(), "test", "test"},
 		{cmdb.NewDeployTemplate(), "docker-compose-test", "test"},

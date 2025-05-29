@@ -14,25 +14,28 @@ type Resource interface {
 
 func NewResourceWithKind(kind string) (Resource, error) {
 	kind = strings.ToLower(kind)
-	kindMap := map[string]Resource{
-		"secret":            NewSecret(),
-		"scm":               NewSCM(),
-		"datacenter":        NewDatacenter(),
-		"zone":              NewZone(),
-		"hostnode":          NewHostNode(),
-		"helmrepository":    NewHelmRepository(),
-		"containerregistry": NewContainerRegistry(),
-		"configcenter":      NewConfigCenter(),
-		"deployplatform":    NewDeployPlatform(),
-		"namespace":         NewNamespace(),
-		"deploytemplate":    NewDeployTemplate(),
-		"project":           NewProject(),
-		"app":               NewApp(),
-		"resourcerange":     NewResourceRange(),
-		"orchestration":     NewOrchestration(),
+	kinds := []Resource{
+		NewSecret(),
+		NewSCM(),
+		NewDatacenter(),
+		NewZone(),
+		NewHostNode(),
+		NewHelmRepository(),
+		NewContainerRegistry(),
+		NewConfigCenter(),
+		NewDeployPlatform(),
+		NewNamespace(),
+		NewDeployTemplate(),
+		NewProject(),
+		NewApp(),
+		NewResourceRange(),
+		NewOrchestration(),
+		NewAppDeployment(),
 	}
-	if r, ok := kindMap[kind]; ok {
-		return r, nil
+	for _, r := range kinds {
+		if strings.ToLower(r.GetKind()) == kind {
+			return r, nil
+		}
 	}
 	return nil, ResourceTypeError{Kind: kind}
 }
@@ -124,6 +127,12 @@ func NewResourceRange() *ResourceRange {
 func NewOrchestration() *Orchestration {
 	return &Orchestration{
 		ResourceBase: *NewResourceBase("Orchestration", ""),
+	}
+}
+
+func NewAppDeployment() *AppDeployment {
+	return &AppDeployment{
+		ResourceBase: *NewResourceBase("AppDeployment", ""),
 	}
 }
 
@@ -615,5 +624,36 @@ func (r Orchestration) GetKind() string {
 }
 
 func (r Orchestration) GetMeta() ResourceMeta {
+	return r.Metadata
+}
+
+type AppDeploymentSpecTemplateMeta struct {
+	Labels map[string]string `json:"labels"`
+}
+
+type AppDeploymentSpecTemplate struct {
+	Metadata       AppDeploymentSpecTemplateMeta `json:"metadata" validete:"required"`
+	Spec           ResourceRangeSpec             `json:"spec" validate:"required"`
+	DeployTemplate *ResourceRangeDeployTemplate  `json:"deployTemplate,omitempty"`
+}
+
+type AppDeploymentSpec struct {
+	Orchestration string                    `json:"orchestration" validate:"required,dns_rfc1035_label"`
+	ResourceRange string                    `json:"resourceRange" validate:"required,dns_rfc1035_label"`
+	Template      AppDeploymentSpecTemplate `json:"template" validate:"required"`
+}
+
+type AppDeployment struct {
+	ResourceBase `json:",inline"`
+	Spec         AppDeploymentSpec `json:"spec" validate:"required"`
+	FlowRunId    string            `json:"flow_run_id" validate:"omitempty,uuid4"`
+	Status       string            `json:"status"`
+}
+
+func (r AppDeployment) GetKind() string {
+	return r.Kind
+}
+
+func (r AppDeployment) GetMeta() ResourceMeta {
 	return r.Metadata
 }

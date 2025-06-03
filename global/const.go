@@ -1,5 +1,7 @@
 package global
 
+const StoragePathPrefix string = "/registry"
+
 var ResourceOrder = [...]string{
 	"Secret",
 	"Project",

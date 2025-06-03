@@ -29,14 +29,14 @@ var getCmd = &cobra.Command{
 	Short: "Get resources",
 }
 
-func InitMutilGetCmd(objs []cmdb.Resource) {
+func InitMutilGetCmd(objs []cmdb.Object) {
 	for _, o := range objs {
 		getCmd.AddCommand(newGetCmd(o))
 	}
 	RootCmd.AddCommand(getCmd)
 }
 
-func newGetCmd(r cmdb.Resource) *cobra.Command {
+func newGetCmd(r cmdb.Object) *cobra.Command {
 	kind := strings.ToLower(r.GetKind())
 	GetCmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [name]", kind),
@@ -52,7 +52,7 @@ func newGetCmd(r cmdb.Resource) *cobra.Command {
 	return GetCmd
 }
 
-func getCmdHandle(c *cobra.Command, r cmdb.Resource, args []string) {
+func getCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
 	outputFmt, _ := c.Flags().GetString("output")
 	revision, _ := c.Flags().GetInt64("revision")
 	opt := parseListOptionsFlags(c)
@@ -105,7 +105,7 @@ func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
 	}
 }
 
-func outputFmtSimple(resources []map[string]any, r cmdb.Resource) {
+func outputFmtSimple(resources []map[string]any, r cmdb.Object) {
 	tableHeader := []string{"NAME"}
 
 	// 不同 Resource 支持自定义 Column

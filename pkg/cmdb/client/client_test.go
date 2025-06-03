@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,13 +28,13 @@ func testCreateResource(t *testing.T, filePath string) {
 	assert.IsType(t, cmdb.ResourceAlreadyExistError{}, err, err.Error())
 }
 
-func testReadResource(t *testing.T, o cmdb.Resource, name, namespace string) {
+func testReadResource(t *testing.T, o cmdb.Object, name, namespace string) {
 	obj, err := DefaultCMDBClient.ReadResource(o, name, namespace, 0)
 	assert.IsType(t, map[string]any{}, obj)
 	assert.NoError(t, err)
 }
 
-func testListResource(t *testing.T, o cmdb.Resource, namespace string) {
+func testListResource(t *testing.T, o cmdb.Object, namespace string) {
 	objs, err := DefaultCMDBClient.ListResource(o, &ListOptions{Namespace: namespace})
 	assert.Less(t, 0, len(objs))
 	assert.NoError(t, err)
@@ -46,19 +45,19 @@ func testListResource(t *testing.T, o cmdb.Resource, namespace string) {
 	assert.NoError(t, err)
 }
 
-func testCountResource(t *testing.T, o cmdb.Resource, namespace string) {
+func testCountResource(t *testing.T, o cmdb.Object, namespace string) {
 	count, err := DefaultCMDBClient.CountResource(o, namespace)
 	assert.LessOrEqual(t, 1, count)
 	assert.NoError(t, err)
 }
 
-func testGetResourceNames(t *testing.T, o cmdb.Resource, namespace string) {
+func testGetResourceNames(t *testing.T, o cmdb.Object, namespace string) {
 	names, err := DefaultCMDBClient.GetResourceNames(o, namespace)
 	assert.LessOrEqual(t, 1, len(names))
 	assert.NoError(t, err)
 }
 
-func testUpdateResource(t *testing.T, o cmdb.Resource, name, namespace, updatePath string, value any) {
+func testUpdateResource(t *testing.T, o cmdb.Object, name, namespace, updatePath string, value any) {
 	obj, err := DefaultCMDBClient.ReadResource(o, name, namespace, 0)
 	oldVal := GetMapValueByPath(obj, updatePath)
 	assert.NoError(t, err)
@@ -91,7 +90,7 @@ func testUpdateResource(t *testing.T, o cmdb.Resource, name, namespace, updatePa
 	assert.Equal(t, 0, len(obj2))
 }
 
-func testDeleteResource(t *testing.T, o cmdb.Resource, name, namespace string) {
+func testDeleteResource(t *testing.T, o cmdb.Object, name, namespace string) {
 	err := DefaultCMDBClient.DeleteResource(o, name, namespace)
 	assert.NoError(t, err)
 
@@ -107,27 +106,6 @@ func TestParseResourceFromDirNotExist(t *testing.T) {
 func TestParseResourceFromFileNotExist(t *testing.T) {
 	_, err := ParseResourceFromFile("a-not-exist-file")
 	assert.IsType(t, &fs.PathError{}, err)
-}
-
-func TestParseResourceFromByteYamlInvalid(t *testing.T) {
-	_, err := ParseResourceFromByte([]byte("{]"))
-	assert.IsType(t, &yaml.SyntaxError{}, err)
-}
-
-func TestParseResourceFromByteKindInvalid(t *testing.T) {
-	_, err := ParseResourceFromByte([]byte("kind: a-not-exist-kind"))
-	assert.IsType(t, cmdb.ResourceTypeError{}, err)
-}
-
-func TestParseResourceFromByteUnknownField(t *testing.T) {
-	_, err := ParseResourceFromByte([]byte(`apiVersion: v1alpha
-kind: Secret
-metadata:
-  name: test
-  extFiled: v111
-data:
-  privateKey: 'dGhpcyBpcyBhIHByaXZhdGVLZXkK'`))
-	assert.IsType(t, &yaml.UnknownFieldError{}, err)
 }
 
 func TestReadResourceWithBadAPIUrl(t *testing.T) {
@@ -186,7 +164,7 @@ func TestCreateResource(t *testing.T) {
 func TestReadResource(t *testing.T) {
 	TestCreateResource(t)
 	type Case struct {
-		o               cmdb.Resource
+		o               cmdb.Object
 		name, namespace string
 	}
 	cases := []Case{
@@ -224,7 +202,7 @@ func TestReadResourceNoNamespace(t *testing.T) {
 func TestListResource(t *testing.T) {
 	TestCreateResource(t)
 	type Case struct {
-		o         cmdb.Resource
+		o         cmdb.Object
 		namespace string
 	}
 	cases := []Case{
@@ -253,7 +231,7 @@ func TestListResource(t *testing.T) {
 func TestCountResource(t *testing.T) {
 	TestCreateResource(t)
 	type Case struct {
-		o         cmdb.Resource
+		o         cmdb.Object
 		namespace string
 	}
 	cases := []Case{
@@ -282,7 +260,7 @@ func TestCountResource(t *testing.T) {
 func TestGetResourceNames(t *testing.T) {
 	TestCreateResource(t)
 	type Case struct {
-		o         cmdb.Resource
+		o         cmdb.Object
 		namespace string
 	}
 	cases := []Case{
@@ -311,7 +289,7 @@ func TestGetResourceNames(t *testing.T) {
 func TestUpdateResource(t *testing.T) {
 	TestCreateResource(t)
 	type Case struct {
-		o                           cmdb.Resource
+		o                           cmdb.Object
 		name, namespace, updatePath string
 		value                       any
 	}
@@ -347,7 +325,7 @@ func TestUpdateResource(t *testing.T) {
 func TestDeleteResource(t *testing.T) {
 	TestCreateResource(t)
 	type Case struct {
-		o               cmdb.Resource
+		o               cmdb.Object
 		name, namespace string
 	}
 	// 优先级倒序

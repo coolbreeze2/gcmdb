@@ -30,7 +30,7 @@ func addPersistentFlags() {
 func init() {
 	addPersistentFlags()
 
-	objects := []cmdb.Resource{}
+	objects := []cmdb.Object{}
 	for _, kind := range global.ResourceOrder {
 		o, err := cmdb.NewResourceWithKind(kind)
 		if err == nil {

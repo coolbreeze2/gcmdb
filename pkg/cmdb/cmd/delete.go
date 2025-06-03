@@ -14,14 +14,14 @@ var deleteCmd = &cobra.Command{
 	Short: "Delete resources",
 }
 
-func InitMutilDeleteCmd(objs []cmdb.Resource) {
+func InitMutilDeleteCmd(objs []cmdb.Object) {
 	for _, o := range objs {
 		deleteCmd.AddCommand(newDeleteCmd(o))
 	}
 	RootCmd.AddCommand(deleteCmd)
 }
 
-func newDeleteCmd(r cmdb.Resource) *cobra.Command {
+func newDeleteCmd(r cmdb.Object) *cobra.Command {
 	// TODO: 支持 -f 从文件删除，类似 apply
 	kind := strings.ToLower(r.GetKind())
 	cmd := &cobra.Command{
@@ -37,7 +37,7 @@ func newDeleteCmd(r cmdb.Resource) *cobra.Command {
 	return cmd
 }
 
-func deleteCmdHandle(c *cobra.Command, r cmdb.Resource, args []string) {
+func deleteCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
 	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
 	var name string
 

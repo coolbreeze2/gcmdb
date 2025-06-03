@@ -7,37 +7,51 @@ import (
 
 const APIVersion string = "v1alpha"
 
-type Resource interface {
+type Object interface {
 	GetKind() string
-	GetMeta() ResourceMeta
+	GetMeta() *ObjectMeta
 }
 
-func NewResourceWithKind(kind string) (Resource, error) {
+func NewResourceWithKind(kind string) (Object, error) {
 	kind = strings.ToLower(kind)
-	kinds := []Resource{
-		NewSecret(),
-		NewSCM(),
-		NewDatacenter(),
-		NewZone(),
-		NewHostNode(),
-		NewHelmRepository(),
-		NewContainerRegistry(),
-		NewConfigCenter(),
-		NewDeployPlatform(),
-		NewNamespace(),
-		NewDeployTemplate(),
-		NewProject(),
-		NewApp(),
-		NewResourceRange(),
-		NewOrchestration(),
-		NewAppDeployment(),
+	var o Object
+	switch kind {
+	case "secret":
+		o = NewSecret()
+	case "scm":
+		o = NewSCM()
+	case "datacenter":
+		o = NewDatacenter()
+	case "zone":
+		o = NewZone()
+	case "hostnode":
+		o = NewHostNode()
+	case "helmrepository":
+		o = NewHelmRepository()
+	case "containerregistry":
+		o = NewContainerRegistry()
+	case "configcenter":
+		o = NewConfigCenter()
+	case "deployplatform":
+		o = NewDeployPlatform()
+	case "namespace":
+		o = NewNamespace()
+	case "deploytemplate":
+		o = NewDeployTemplate()
+	case "project":
+		o = NewProject()
+	case "app":
+		o = NewApp()
+	case "resourcerange":
+		o = NewResourceRange()
+	case "orchestration":
+		o = NewOrchestration()
+	case "appdeployment":
+		o = NewAppDeployment()
+	default:
+		return nil, ResourceTypeError{Kind: kind}
 	}
-	for _, r := range kinds {
-		if strings.ToLower(r.GetKind()) == kind {
-			return r, nil
-		}
-	}
-	return nil, ResourceTypeError{Kind: kind}
+	return o, nil
 }
 
 func NewSecret() *Secret {
@@ -142,7 +156,7 @@ type ManagedFields struct {
 	Time      time.Time `json:"time"`
 }
 
-type ResourceMeta struct {
+type ObjectMeta struct {
 	Name              string            `json:"name" validate:"required,dns_rfc1035_label"`
 	Namespace         string            `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
 	CreateRevision    int64             `json:"create_revision"`
@@ -154,8 +168,8 @@ type ResourceMeta struct {
 	Annotations       map[string]string `json:"annotations"`
 }
 
-func NewResourceMeta(namespace string) *ResourceMeta {
-	return &ResourceMeta{
+func NewResourceMeta(namespace string) *ObjectMeta {
+	return &ObjectMeta{
 		Namespace:         namespace,
 		ManagedFields:     ManagedFields{},
 		CreationTimeStamp: time.Now(),
@@ -165,10 +179,10 @@ func NewResourceMeta(namespace string) *ResourceMeta {
 }
 
 type ResourceBase struct {
-	APIVersion  string       `json:"apiVersion"`
-	Kind        string       `json:"kind" validate:"required"`
-	Metadata    ResourceMeta `json:"metadata"`
-	Description string       `json:"description"`
+	APIVersion  string     `json:"apiVersion"`
+	Kind        string     `json:"kind" validate:"required"`
+	Metadata    ObjectMeta `json:"metadata"`
+	Description string     `json:"description"`
 }
 
 func NewResourceBase(kind, namespace string) *ResourceBase {
@@ -184,12 +198,12 @@ type Secret struct {
 	Data         map[string]string `json:"data" validate:"required"`
 }
 
-func (r Secret) GetKind() string {
+func (r *Secret) GetKind() string {
 	return r.Kind
 }
 
-func (r Secret) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *Secret) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type DatacenterSpec struct {
@@ -206,8 +220,8 @@ func (r Datacenter) GetKind() string {
 	return r.Kind
 }
 
-func (r Datacenter) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *Datacenter) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type ZoneSpec struct {
@@ -224,8 +238,8 @@ func (r Zone) GetKind() string {
 	return r.Kind
 }
 
-func (r Zone) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *Zone) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type NamespaceSpec struct {
@@ -243,8 +257,8 @@ func (r Namespace) GetKind() string {
 	return r.Kind
 }
 
-func (r Namespace) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *Namespace) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type ScmSpec struct {
@@ -262,8 +276,8 @@ func (r SCM) GetKind() string {
 	return r.Kind
 }
 
-func (r SCM) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *SCM) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type HostNodeDisk struct {
@@ -313,8 +327,8 @@ func (r HostNode) GetKind() string {
 	return r.Kind
 }
 
-func (r HostNode) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *HostNode) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type HelmRepositorySpec struct {
@@ -332,8 +346,8 @@ func (r HelmRepository) GetKind() string {
 	return r.Kind
 }
 
-func (r HelmRepository) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *HelmRepository) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type BasicAuth struct {
@@ -358,8 +372,8 @@ func (r ContainerRegistry) GetKind() string {
 	return r.Kind
 }
 
-func (r ContainerRegistry) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *ContainerRegistry) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type ConfigCenterApollo struct {
@@ -381,8 +395,8 @@ func (r ConfigCneter) GetKind() string {
 	return r.Kind
 }
 
-func (r ConfigCneter) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *ConfigCneter) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type DeployPlatformKubernetesCluster struct {
@@ -416,8 +430,8 @@ func (r DeployPlatform) GetKind() string {
 	return r.Kind
 }
 
-func (r DeployPlatform) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *DeployPlatform) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type DeployTemplateSpec struct {
@@ -435,8 +449,8 @@ func (r DeployTemplate) GetKind() string {
 	return r.Kind
 }
 
-func (r DeployTemplate) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *DeployTemplate) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type ProjectSpec struct {
@@ -452,8 +466,8 @@ func (r Project) GetKind() string {
 	return r.Kind
 }
 
-func (r Project) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *Project) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type AppSCM struct {
@@ -472,12 +486,12 @@ type App struct {
 	Spec         AppSpec `json:"spec" validate:"required"`
 }
 
-func (r App) GetKind() string {
+func (r *App) GetKind() string {
 	return r.Kind
 }
 
-func (r App) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *App) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type AppDepConfigCenterApollo struct {
@@ -605,8 +619,8 @@ func (r ResourceRange) GetKind() string {
 	return r.Kind
 }
 
-func (r ResourceRange) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *ResourceRange) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type OrchestrationSpec struct {
@@ -623,8 +637,8 @@ func (r Orchestration) GetKind() string {
 	return r.Kind
 }
 
-func (r Orchestration) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *Orchestration) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }
 
 type AppDeploymentSpecTemplateMeta struct {
@@ -654,6 +668,6 @@ func (r AppDeployment) GetKind() string {
 	return r.Kind
 }
 
-func (r AppDeployment) GetMeta() ResourceMeta {
-	return r.Metadata
+func (r *AppDeployment) GetMeta() *ObjectMeta {
+	return &r.Metadata
 }

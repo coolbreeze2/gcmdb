@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"goTool/global"
 	"goTool/pkg/cmdb"
+	"goTool/pkg/cmdb/conversion"
 	"os"
 	"path"
 	"regexp"
@@ -11,12 +12,11 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/goccy/go-yaml"
 	"github.com/imroc/req/v3"
 )
 
 // 创建资源
-func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
+func (c CMDBClient) CreateResource(r cmdb.Object) (map[string]any, error) {
 	var err error
 	var resp *req.Response
 	var resource, result map[string]any
@@ -36,7 +36,7 @@ func (c CMDBClient) CreateResource(r cmdb.Resource) (map[string]any, error) {
 }
 
 // 更新资源
-func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
+func (c CMDBClient) UpdateResource(r cmdb.Object) (map[string]any, error) {
 	var err error
 	var resp *req.Response
 	var resource, result map[string]any
@@ -57,7 +57,7 @@ func (c CMDBClient) UpdateResource(r cmdb.Resource) (map[string]any, error) {
 }
 
 // 查询指定名称的资源
-func (c CMDBClient) ReadResource(r cmdb.Resource, name string, namespace string, revision int64) (map[string]any, error) {
+func (c CMDBClient) ReadResource(r cmdb.Object, name string, namespace string, revision int64) (map[string]any, error) {
 	var err error
 	var result map[string]any
 
@@ -70,7 +70,7 @@ func (c CMDBClient) ReadResource(r cmdb.Resource, name string, namespace string,
 }
 
 // 删除资源指定名称的资源
-func (c CMDBClient) DeleteResource(r cmdb.Resource, name, namespace string) error {
+func (c CMDBClient) DeleteResource(r cmdb.Object, name, namespace string) error {
 	var err error
 
 	url := c.getURDResourceUrl(r, name, namespace)
@@ -80,7 +80,7 @@ func (c CMDBClient) DeleteResource(r cmdb.Resource, name, namespace string) erro
 }
 
 // 查询多个资源
-func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[string]any, error) {
+func (c CMDBClient) ListResource(r cmdb.Object, opt *ListOptions) ([]map[string]any, error) {
 	var err error
 	var result []map[string]any
 
@@ -98,7 +98,7 @@ func (c CMDBClient) ListResource(r cmdb.Resource, opt *ListOptions) ([]map[strin
 }
 
 // 查询指定类型资源的总数 count
-func (c CMDBClient) CountResource(r cmdb.Resource, namespace string) (int, error) {
+func (c CMDBClient) CountResource(r cmdb.Object, namespace string) (int, error) {
 	var err error
 	var count int
 
@@ -110,7 +110,7 @@ func (c CMDBClient) CountResource(r cmdb.Resource, namespace string) (int, error
 }
 
 // 查询指定类型资源的所有名称 names
-func (c CMDBClient) GetResourceNames(r cmdb.Resource, namespace string) ([]string, error) {
+func (c CMDBClient) GetResourceNames(r cmdb.Object, namespace string) ([]string, error) {
 	var err error
 	var names []string
 
@@ -122,7 +122,7 @@ func (c CMDBClient) GetResourceNames(r cmdb.Resource, namespace string) ([]strin
 }
 
 // 格式化错误信息
-func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) error {
+func (c CMDBClient) fmtError(r cmdb.Object, resp *req.Response, err error) error {
 	if err != nil || resp == nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (c CMDBClient) fmtError(r cmdb.Resource, resp *req.Response, err error) err
 }
 
 // 更新/查询/删除的 URL
-func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) string {
+func (c CMDBClient) getURDResourceUrl(r cmdb.Object, name, namespace string) string {
 	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), name)
 	} else {
@@ -161,12 +161,12 @@ func (c CMDBClient) getURDResourceUrl(r cmdb.Resource, name, namespace string) s
 }
 
 // 创建的 URL
-func (c CMDBClient) getCreateResourceUrl(r cmdb.Resource) string {
+func (c CMDBClient) getCreateResourceUrl(r cmdb.Object) string {
 	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 }
 
 // 查询列表的 URL
-func (c CMDBClient) getListResourceUrl(r cmdb.Resource, namespace string) string {
+func (c CMDBClient) getListResourceUrl(r cmdb.Object, namespace string) string {
 	if namespace == "" {
 		return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "/")
 	} else {
@@ -174,11 +174,11 @@ func (c CMDBClient) getListResourceUrl(r cmdb.Resource, namespace string) string
 	}
 }
 
-func (c CMDBClient) getCountResourceUrl(r cmdb.Resource) string {
+func (c CMDBClient) getCountResourceUrl(r cmdb.Object) string {
 	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "count", "/")
 }
 
-func (c CMDBClient) getResourceNamesUrl(r cmdb.Resource) string {
+func (c CMDBClient) getResourceNamesUrl(r cmdb.Object) string {
 	return UrlJoin(c.getCMDBAPIURL(), LowerKind(r), "names", "/")
 }
 
@@ -189,12 +189,12 @@ func (c CMDBClient) getCMDBAPIURL() string {
 	return global.ClientSetting.CMDB_API_URL
 }
 
-func LowerKind(r cmdb.Resource) string {
+func LowerKind(r cmdb.Object) string {
 	return strings.ToLower(r.GetKind()) + "s"
 }
 
 // 字段校验
-func Validate(r cmdb.Resource) error {
+func Validate(r cmdb.Object) error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	return validate.Struct(r)
 }
@@ -243,16 +243,16 @@ func removeResourceManageFields(r map[string]any) {
 	}
 }
 
-func ParseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {
+func ParseResourceFromDir(dirPath string) ([]cmdb.Object, error) {
 	var err error
-	var objs []cmdb.Resource
+	var objs []cmdb.Object
 	var entries []os.DirEntry
 	if entries, err = os.ReadDir(dirPath); err != nil {
 		return nil, err
 	}
 	for _, e := range entries {
 		filePath := path.Join(dirPath, e.Name())
-		var obj cmdb.Resource
+		var obj cmdb.Object
 		if obj, err = ParseResourceFromFile(filePath); err != nil {
 			return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
 		}
@@ -261,33 +261,12 @@ func ParseResourceFromDir(dirPath string) ([]cmdb.Resource, error) {
 	return objs, nil
 }
 
-func ParseResourceFromFile(filePath string) (cmdb.Resource, error) {
+func ParseResourceFromFile(filePath string) (cmdb.Object, error) {
 	var file []byte
 	var err error
 	if file, err = os.ReadFile(filePath); err != nil {
 		return nil, err
 	}
 
-	return ParseResourceFromByte(file)
-}
-
-func ParseResourceFromByte(b []byte) (cmdb.Resource, error) {
-	var r cmdb.Resource
-	var err error
-	var jsonObj map[string]any
-	if err = yaml.Unmarshal(b, &jsonObj); err != nil {
-		return nil, err
-	}
-	kind := jsonObj["kind"].(string)
-
-	if r, err = cmdb.NewResourceWithKind(kind); err != nil {
-		return nil, err
-	}
-
-	// 不允许设置额外字段
-	if err := yaml.UnmarshalWithOptions(b, r, yaml.DisallowUnknownField()); err != nil {
-		return nil, err
-	}
-
-	return r, nil
+	return conversion.DecodeObject(file)
 }

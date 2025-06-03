@@ -7,6 +7,7 @@ import (
 
 var (
 	ClientSetting *setting.ClientSettingS
+	ServerSetting *setting.ServerSettingS
 )
 
 func init() {
@@ -22,6 +23,9 @@ func setupSetting() error {
 		return err
 	}
 	if err = setting.ReadSection("Client", &ClientSetting); err != nil {
+		return err
+	}
+	if err = setting.ReadSection("Server", &ServerSetting); err != nil {
 		return err
 	}
 	return nil

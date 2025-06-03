@@ -27,14 +27,14 @@ func init() {
 
 func applyCmdHandle(c *cobra.Command) {
 	filePath, _ := c.Flags().GetString("filename")
-	var resources []cmdb.Resource
+	var resources []cmdb.Object
 
 	info, err := os.Stat(filePath)
 	CheckError(err)
 	if info.IsDir() {
 		resources, err = client.ParseResourceFromDir(filePath)
 	} else {
-		var resource cmdb.Resource
+		var resource cmdb.Object
 		resource, err = client.ParseResourceFromFile(filePath)
 		resources = append(resources, resource)
 	}
@@ -49,7 +49,7 @@ func addApplyFlags(c *cobra.Command) {
 }
 
 // 检查资源类型是否存在
-func checkResourceTypeExist(resources []cmdb.Resource) error {
+func checkResourceTypeExist(resources []cmdb.Object) error {
 	for _, v := range resources {
 		kind := v.GetKind()
 		_, err := cmdb.NewResourceWithKind(kind)
@@ -59,7 +59,7 @@ func checkResourceTypeExist(resources []cmdb.Resource) error {
 }
 
 // 根据资源优先级排序
-func sortResource(resources []cmdb.Resource) error {
+func sortResource(resources []cmdb.Object) error {
 	orders := map[string]int{}
 	for i, v := range global.ResourceOrder {
 		orders[v] = i
@@ -72,13 +72,13 @@ func sortResource(resources []cmdb.Resource) error {
 	return nil
 }
 
-func applyResources(resources []cmdb.Resource) {
+func applyResources(resources []cmdb.Object) {
 	for i := range resources {
 		CheckError(applyResource(resources[i]))
 	}
 }
 
-func applyResource(r cmdb.Resource) error {
+func applyResource(r cmdb.Object) error {
 	meta := r.GetMeta()
 	cli := client.DefaultCMDBClient
 	_, err := cli.ReadResource(r, meta.Name, meta.Namespace, 0)
@@ -93,7 +93,7 @@ func applyResource(r cmdb.Resource) error {
 	return err
 }
 
-func createUpdateResource(r cmdb.Resource, action string) error {
+func createUpdateResource(r cmdb.Object, action string) error {
 	var result map[string]any
 	var err error
 

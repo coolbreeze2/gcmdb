@@ -8,6 +8,7 @@ require (
 	bou.ke/monkey v1.0.2
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/imroc/req/v3 v3.52.1
+	github.com/mcuadros/go-defaults v1.2.0
 	github.com/stretchr/testify v1.10.0
 )
 

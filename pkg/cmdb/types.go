@@ -56,97 +56,97 @@ func NewResourceWithKind(kind string) (Object, error) {
 
 func NewSecret() *Secret {
 	return &Secret{
-		ResourceBase: *NewResourceBase("Secret", ""),
+		ResourceBase: *NewResourceBase("Secret", false),
 	}
 }
 
 func NewDatacenter() *Datacenter {
 	return &Datacenter{
-		ResourceBase: *NewResourceBase("Datacenter", ""),
+		ResourceBase: *NewResourceBase("Datacenter", false),
 	}
 }
 
 func NewZone() *Zone {
 	return &Zone{
-		ResourceBase: *NewResourceBase("Zone", ""),
+		ResourceBase: *NewResourceBase("Zone", false),
 	}
 }
 
 func NewHostNode() *HostNode {
 	return &HostNode{
-		ResourceBase: *NewResourceBase("HostNode", ""),
+		ResourceBase: *NewResourceBase("HostNode", false),
 	}
 }
 
 func NewHelmRepository() *HelmRepository {
 	return &HelmRepository{
-		ResourceBase: *NewResourceBase("HelmRepository", ""),
+		ResourceBase: *NewResourceBase("HelmRepository", false),
 	}
 }
 
 func NewContainerRegistry() *ContainerRegistry {
 	return &ContainerRegistry{
-		ResourceBase: *NewResourceBase("ContainerRegistry", ""),
+		ResourceBase: *NewResourceBase("ContainerRegistry", false),
 	}
 }
 
 func NewConfigCenter() *ConfigCneter {
 	return &ConfigCneter{
-		ResourceBase: *NewResourceBase("ConfigCenter", ""),
+		ResourceBase: *NewResourceBase("ConfigCenter", false),
 	}
 }
 
 func NewDeployPlatform() *DeployPlatform {
 	return &DeployPlatform{
-		ResourceBase: *NewResourceBase("DeployPlatform", ""),
+		ResourceBase: *NewResourceBase("DeployPlatform", false),
 	}
 }
 
 func NewNamespace() *Namespace {
 	return &Namespace{
-		ResourceBase: *NewResourceBase("Namespace", ""),
+		ResourceBase: *NewResourceBase("Namespace", false),
 	}
 }
 
 func NewDeployTemplate() *DeployTemplate {
 	return &DeployTemplate{
-		ResourceBase: *NewResourceBase("DeployTemplate", ""),
+		ResourceBase: *NewResourceBase("DeployTemplate", true),
 	}
 }
 
 func NewSCM() *SCM {
 	return &SCM{
-		ResourceBase: *NewResourceBase("SCM", ""),
+		ResourceBase: *NewResourceBase("SCM", false),
 	}
 }
 
 func NewProject() *Project {
 	return &Project{
-		ResourceBase: *NewResourceBase("Project", ""),
+		ResourceBase: *NewResourceBase("Project", false),
 	}
 }
 
 func NewApp() *App {
 	return &App{
-		ResourceBase: *NewResourceBase("App", ""),
+		ResourceBase: *NewResourceBase("App", false),
 	}
 }
 
 func NewResourceRange() *ResourceRange {
 	return &ResourceRange{
-		ResourceBase: *NewResourceBase("ResourceRange", ""),
+		ResourceBase: *NewResourceBase("ResourceRange", true),
 	}
 }
 
 func NewOrchestration() *Orchestration {
 	return &Orchestration{
-		ResourceBase: *NewResourceBase("Orchestration", ""),
+		ResourceBase: *NewResourceBase("Orchestration", false),
 	}
 }
 
 func NewAppDeployment() *AppDeployment {
 	return &AppDeployment{
-		ResourceBase: *NewResourceBase("AppDeployment", ""),
+		ResourceBase: *NewResourceBase("AppDeployment", true),
 	}
 }
 
@@ -158,23 +158,29 @@ type ManagedFields struct {
 
 type ObjectMeta struct {
 	Name              string            `json:"name" validate:"required,dns_rfc1035_label"`
-	Namespace         string            `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
-	CreateRevision    int64             `json:"create_revision"`
-	Revision          int64             `json:"revision"`
-	Version           int64             `json:"version"`
+	Namespace         string            `json:"namespace,omitempty" validate:"omitempty,dns_rfc1035_label" reference:"Namespace"`
+	CreateRevision    int64             `json:"create_revision,omitempty"`
+	Revision          int64             `json:"revision,omitempty"`
+	Version           int64             `json:"version,omitempty"`
 	ManagedFields     ManagedFields     `json:"managedFields"`
 	CreationTimeStamp time.Time         `json:"creationTimestamp"`
 	Labels            map[string]string `json:"labels"`
 	Annotations       map[string]string `json:"annotations"`
+	namespaced        bool
 }
 
-func NewResourceMeta(namespace string) *ObjectMeta {
+func (m *ObjectMeta) HasNamespace() bool {
+	return m.namespaced
+}
+
+func NewResourceMeta(namespaced bool) *ObjectMeta {
 	return &ObjectMeta{
-		Namespace:         namespace,
+		Namespace:         "",
 		ManagedFields:     ManagedFields{},
 		CreationTimeStamp: time.Now(),
 		Labels:            make(map[string]string),
 		Annotations:       make(map[string]string),
+		namespaced:        namespaced,
 	}
 }
 
@@ -185,11 +191,11 @@ type ResourceBase struct {
 	Description string     `json:"description"`
 }
 
-func NewResourceBase(kind, namespace string) *ResourceBase {
+func NewResourceBase(kind string, namespaced bool) *ResourceBase {
 	return &ResourceBase{
 		APIVersion: APIVersion,
 		Kind:       kind,
-		Metadata:   *NewResourceMeta(namespace),
+		Metadata:   *NewResourceMeta(namespaced),
 	}
 }
 
@@ -208,7 +214,7 @@ func (r *Secret) GetMeta() *ObjectMeta {
 
 type DatacenterSpec struct {
 	Provider   string `json:"provider" validate:"required"`
-	PrivateKey string `json:"privateKey" validate:"required,dns_rfc1035_label"`
+	PrivateKey string `json:"privateKey" validate:"required,dns_rfc1035_label" reference:"Secret"`
 }
 
 type Datacenter struct {
@@ -226,7 +232,7 @@ func (r *Datacenter) GetMeta() *ObjectMeta {
 
 type ZoneSpec struct {
 	Provider   string `json:"provider" validate:"required"`
-	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
 }
 
 type Zone struct {
@@ -245,7 +251,7 @@ func (r *Zone) GetMeta() *ObjectMeta {
 type NamespaceSpec struct {
 	BizEnv     string `json:"bizEnv" validate:"required"`
 	BizUnit    string `json:"bizUnit" validate:"required"`
-	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
 }
 
 type Namespace struct {
@@ -262,7 +268,7 @@ func (r *Namespace) GetMeta() *ObjectMeta {
 }
 
 type ScmSpec struct {
-	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
 	Url        string `json:"url" validate:"required,url"`
 	Service    string `json:"service" validate:"required"`
 }
@@ -298,8 +304,8 @@ type HostNodeSpecConfiguration struct {
 }
 
 type HostNodeSpec struct {
-	Datacenter    string                    `json:"datacenter" validate:"required,dns_rfc1035_label"`
-	Zone          string                    `json:"zone" validate:"required,dns_rfc1035_label"`
+	Datacenter    string                    `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
+	Zone          string                    `json:"zone" validate:"required,dns_rfc1035_label" reference:"Zone"`
 	Ip            string                    `json:"ip" validate:"required,ip"`
 	PublicIp      string                    `json:"publicip" validate:"required,ip"`
 	Hostname      string                    `json:"hostname" validate:"required,hostname"`
@@ -333,7 +339,7 @@ func (r *HostNode) GetMeta() *ObjectMeta {
 
 type HelmRepositorySpec struct {
 	Auth       string `json:"auth" validate:"required,base64"`
-	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Datacenter string `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
 	Url        string `json:"url" validate:"required,url"`
 }
 
@@ -357,7 +363,7 @@ type BasicAuth struct {
 
 type ContainerRegistrySpec struct {
 	Auth       BasicAuth `json:"auth" validate:"required"`
-	Datacenter string    `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Datacenter string    `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
 	Registry   string    `json:"registry" validate:"required,hostname"`
 	Type       string    `json:"type" validate:"required"`
 	Url        string    `json:"url" validate:"required,url"`
@@ -417,7 +423,7 @@ type DeployPlatformKubernetes struct {
 }
 
 type DeployPlatformSpec struct {
-	Datacenter string                   `json:"datacenter" validate:"required,dns_rfc1035_label"`
+	Datacenter string                   `json:"datacenter" validate:"required,dns_rfc1035_label" reference:"Datacenter"`
 	Kubernetes DeployPlatformKubernetes `json:"kubernetes" validate:"required"`
 }
 
@@ -471,13 +477,13 @@ func (r *Project) GetMeta() *ObjectMeta {
 }
 
 type AppSCM struct {
-	Name    string `json:"name" validate:"required,dns_rfc1035_label"`
+	Name    string `json:"name" validate:"required,dns_rfc1035_label" reference:"SCM"`
 	Project string `json:"project" validate:"required"`
 	User    string `json:"user" validate:"required"`
 }
 
 type AppSpec struct {
-	Project string `json:"project" validate:"required,dns_rfc1035_label"`
+	Project string `json:"project" validate:"required,dns_rfc1035_label" reference:"Project"`
 	Scm     AppSCM `json:"scm" validate:"required"`
 }
 
@@ -498,7 +504,7 @@ type AppDepConfigCenterApollo struct {
 	AppId   string `json:"appId"`
 	Cluster string `json:"cluster"`
 	Env     string `json:"env"`
-	Name    string `json:"name" validete:"omitempty,dns_rfc1035_label"`
+	Name    string `json:"name" validete:"omitempty,dns_rfc1035_label" reference:"ConfigCenter"`
 }
 
 type AppDepConfigCenter struct {
@@ -519,29 +525,29 @@ type ApplicationDependence struct {
 }
 
 type DPHelm struct {
-	Name         string `json:"name" validate:"omitempty,dns_rfc1035_label"`
+	Name         string `json:"name" validate:"omitempty,dns_rfc1035_label" reference:"HelmRepository"`
 	Release      string `json:"release"`
 	Chart        string `json:"chart"`
 	ChartVersion string `json:"chartVersion"`
 }
 
 type DPKubernetes struct {
-	Name              string              `json:"name" validate:"omitempty,dns_rfc1035_label"`
-	ContainerRegistry DPContainerRegistry `json:"containerRegistry"`
-	Namespace         string              `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
-	Helm              DPHelm              `json:"helm"`
+	Name              string               `json:"name" validate:"omitempty,dns_rfc1035_label" reference:"DeployPlatform"`
+	ContainerRegistry *DPContainerRegistry `json:"containerRegistry"`
+	Namespace         string               `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
+	Helm              *DPHelm              `json:"helm"`
 }
 
 type DPContainerRegistry struct {
-	Name    string `json:"name" validate:"omitempty,dns_rfc1035_label"`
+	Name    string `json:"name" validate:"omitempty,dns_rfc1035_label" reference:"ContainerRegistry"`
 	Project string `json:"project"`
 }
 
 type DeployPlatformDocker struct {
-	ContainerRegistry DPContainerRegistry `json:"containerRegistry"`
-	NodeName          string              `json:"nodeName,omitempty" validate:"omitempty,dns_rfc1035_label"`
-	NodeIP            string              `json:"nodeIP,omitempty" validate:"omitempty,ip"`
-	KubernetesAgent   DPKubernetes        `json:"kubernetesAgent"`
+	ContainerRegistry *DPContainerRegistry `json:"containerRegistry"`
+	NodeName          string               `json:"nodeName,omitempty" validate:"omitempty,dns_rfc1035_label" reference:"HostNode"`
+	NodeIP            string               `json:"nodeIP,omitempty" validate:"omitempty,ip"`
+	KubernetesAgent   *DPKubernetes        `json:"kubernetesAgent"`
 }
 
 type ResourceRangeDeployPlatform struct {
@@ -550,7 +556,7 @@ type ResourceRangeDeployPlatform struct {
 }
 
 type ResourceRangeDeployTemplate struct {
-	Name       string            `json:"name"`
+	Name       string            `json:"name" validate:"omitempty,dns_rfc1035_label" reference:"DeployTemplate"`
 	DeployArgs map[string]string `json:"deployArgs"`
 	Values     map[string]any    `json:"values"`
 }
@@ -596,7 +602,7 @@ type ResourceRangePorts struct {
 }
 
 type ResourceRangeSpec struct {
-	App                   string                      `json:"app" validate:"omitempty,dns_rfc1035_label"`
+	App                   string                      `json:"app" validate:"omitempty,dns_rfc1035_label" reference:"App"`
 	ApplicationDependence ApplicationDependence       `json:"applicationDependence"`
 	Args                  []string                    `json:"args"`
 	Env                   map[string]string           `json:"env"`
@@ -604,7 +610,7 @@ type ResourceRangeSpec struct {
 	DeployPlatform        ResourceRangeDeployPlatform `json:"deployPlatform"`
 	Monitoring            ResourceRangeMonitoring     `json:"monitoring"`
 	NodeSelector          map[string]string           `json:"nodeSelector"`
-	Project               string                      `json:"project" validate:"omitempty,dns_rfc1035_label"`
+	Project               string                      `json:"project" validate:"omitempty,dns_rfc1035_label" reference:"Project"`
 	Resources             ResourceRangeResources      `json:"resources"`
 	Ports                 *ResourceRangePorts         `json:"ports,omitempty"`
 }
@@ -652,8 +658,8 @@ type AppDeploymentSpecTemplate struct {
 }
 
 type AppDeploymentSpec struct {
-	Orchestration string                    `json:"orchestration" validate:"required,dns_rfc1035_label"`
-	ResourceRange string                    `json:"resourceRange" validate:"required,dns_rfc1035_label"`
+	Orchestration string                    `json:"orchestration" validate:"required,dns_rfc1035_label" reference:"Orchestration"`
+	ResourceRange string                    `json:"resourceRange" validate:"required,dns_rfc1035_label" reference:"ResourceRange"`
 	Template      AppDeploymentSpecTemplate `json:"template" validate:"required"`
 }
 
@@ -661,7 +667,7 @@ type AppDeployment struct {
 	ResourceBase `json:",inline"`
 	Spec         AppDeploymentSpec `json:"spec" validate:"required"`
 	FlowRunId    string            `json:"flow_run_id" validate:"omitempty,uuid4"`
-	Status       string            `json:"status"`
+	Status       string            `json:"status,omitempty"`
 }
 
 func (r AppDeployment) GetKind() string {

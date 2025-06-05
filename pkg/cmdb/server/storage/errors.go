@@ -10,6 +10,7 @@ const (
 	ErrCodeResourceVersionConflicts
 	ErrCodeInvalidObj
 	ErrCodeUnreachable
+	ErrCodeResourceReferenced
 )
 
 var errCodeToMessage = map[int]string{
@@ -18,6 +19,7 @@ var errCodeToMessage = map[int]string{
 	ErrCodeResourceVersionConflicts: "resource version conflicts",
 	ErrCodeInvalidObj:               "invalid object",
 	ErrCodeUnreachable:              "server unreachable",
+	ErrCodeResourceReferenced:       "resource has been referenced",
 }
 
 func NewKeyNotFoundError(key string, rv int64) *StorageError {
@@ -55,6 +57,14 @@ func NewUnreachableError(key string, rv int64) *StorageError {
 func NewInvalidObjError(key, msg string) *StorageError {
 	return &StorageError{
 		Code:               ErrCodeInvalidObj,
+		Key:                key,
+		AdditionalErrorMsg: msg,
+	}
+}
+
+func NewResourceReferencedError(key, msg string) *StorageError {
+	return &StorageError{
+		Code:               ErrCodeResourceReferenced,
 		Key:                key,
 		AdditionalErrorMsg: msg,
 	}

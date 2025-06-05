@@ -46,7 +46,6 @@ spec:
           containerRegistry:
             name: harbor-test
             project: go-devops
-          nodeName: ''
       monitoring:
         metrics:
           path: metrics

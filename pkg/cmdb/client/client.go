@@ -5,13 +5,13 @@ import (
 	"goTool/global"
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/conversion"
+	"goTool/pkg/cmdb/runtime"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/imroc/req/v3"
 )
 
@@ -26,7 +26,7 @@ func (c CMDBClient) CreateResource(r cmdb.Object) (map[string]any, error) {
 	url := c.getCreateResourceUrl(r)
 	removeResourceManageFields(resource)
 
-	if err = Validate(r); err != nil {
+	if err = runtime.ValidateObject(r); err != nil {
 		return nil, err
 	}
 
@@ -47,7 +47,7 @@ func (c CMDBClient) UpdateResource(r cmdb.Object) (map[string]any, error) {
 	url := c.getURDResourceUrl(r, meta.Name, meta.Namespace)
 	removeResourceManageFields(resource)
 
-	if err = Validate(r); err != nil {
+	if err = runtime.ValidateObject(r); err != nil {
 		return nil, err
 	}
 
@@ -191,12 +191,6 @@ func (c CMDBClient) getCMDBAPIURL() string {
 
 func LowerKind(r cmdb.Object) string {
 	return strings.ToLower(r.GetKind()) + "s"
-}
-
-// 字段校验
-func Validate(r cmdb.Object) error {
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	return validate.Struct(r)
 }
 
 // 解析 Selector map to string

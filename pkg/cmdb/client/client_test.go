@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goTool/pkg/cmdb"
+	"goTool/pkg/cmdb/conversion"
 	"io/fs"
 	"net/url"
 	"testing"
@@ -59,14 +60,14 @@ func testGetResourceNames(t *testing.T, o cmdb.Object, namespace string) {
 
 func testUpdateResource(t *testing.T, o cmdb.Object, name, namespace, updatePath string, value any) {
 	obj, err := DefaultCMDBClient.ReadResource(o, name, namespace, 0)
-	oldVal := GetMapValueByPath(obj, updatePath)
+	oldVal := conversion.GetMapValueByPath(obj, updatePath)
 	assert.NoError(t, err)
 
 	if value == nil {
 		value = RandomString(6)
 	}
 
-	err = SetMapValueByPath(obj, updatePath, value)
+	err = conversion.SetMapValueByPath(obj, updatePath, value)
 	assert.NoError(t, err)
 
 	jsonByte, err := json.Marshal(obj)
@@ -76,7 +77,7 @@ func testUpdateResource(t *testing.T, o cmdb.Object, name, namespace, updatePath
 
 	obj1, err := DefaultCMDBClient.UpdateResource(o)
 	assert.NoError(t, err)
-	newValue := GetMapValueByPath(obj1, updatePath)
+	newValue := conversion.GetMapValueByPath(obj1, updatePath)
 	assert.NoError(t, err)
 	if oldVal == value {
 		assert.Equal(t, nil, newValue)

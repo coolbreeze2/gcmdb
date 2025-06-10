@@ -21,7 +21,7 @@ func (c CMDBClient) CreateResource(r cmdb.Object) (map[string]any, error) {
 	var resp *req.Response
 	var resource, result map[string]any
 
-	c.fmtError(r, resp, StructToMap(r, &resource))
+	c.fmtError(r, resp, conversion.StructToMap(r, &resource))
 
 	url := c.getCreateResourceUrl(r)
 	removeResourceManageFields(resource)
@@ -42,7 +42,7 @@ func (c CMDBClient) UpdateResource(r cmdb.Object) (map[string]any, error) {
 	var resource, result map[string]any
 	meta := r.GetMeta()
 
-	c.fmtError(r, resp, StructToMap(r, &resource))
+	c.fmtError(r, resp, conversion.StructToMap(r, &resource))
 
 	url := c.getURDResourceUrl(r, meta.Name, meta.Namespace)
 	removeResourceManageFields(resource)
@@ -226,9 +226,7 @@ func removeResourceManageFields(r map[string]any) {
 	for index := range fields {
 		delete(metadata, fields[index])
 	}
-	if metadata["namespace"] == "" {
-		delete(metadata, "namespace")
-	}
+
 	r["metadata"] = metadata
 	kind := r["kind"]
 	if kind == "AppDeployment" {

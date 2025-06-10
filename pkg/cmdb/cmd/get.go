@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/client"
+	"goTool/pkg/cmdb/conversion"
 	"os"
 	"strings"
 
@@ -131,7 +132,7 @@ func outputFmtSimple(resources []map[string]any, r cmdb.Object) {
 		row := []string{name}
 		if hasExCol {
 			for _, c := range extraColumns {
-				value := client.GetMapValueByPath(r, c.path).(string)
+				value := conversion.GetMapValueByPath(r, c.path).(string)
 				row = append(row, value)
 			}
 		}

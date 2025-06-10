@@ -3,21 +3,10 @@ package runtime
 import (
 	"fmt"
 	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/conversion"
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
 )
-
-// SetZeroValue would set the object of objPtr to zero value of its type.
-func SetZeroValue(objPtr cmdb.Object) error {
-	v, err := conversion.EnforcePtr(objPtr)
-	if err != nil {
-		return err
-	}
-	v.Set(reflect.Zero(v.Type()))
-	return nil
-}
 
 // 字段校验
 func ValidateObject(r cmdb.Object) error {
@@ -54,9 +43,11 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 		// 获取标签
 		tagValue := fieldType.Tag.Get(tagName)
 		if tagValue != "" {
-			fieldValue := fieldVal.Interface().(string)
-			if fieldValue != "" {
-				result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue})
+			switch fieldValue := fieldVal.Interface().(type) {
+			case string:
+				if fieldValue != "" {
+					result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue})
+				}
 			}
 		}
 

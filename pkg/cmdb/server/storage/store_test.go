@@ -2,11 +2,16 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"goTool/global"
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/conversion"
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -80,6 +85,51 @@ func testGet(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.NoError(t, err)
 }
 
+func testUpdate(t *testing.T, ctx context.Context, s *store, obj cmdb.Object, name, namespace, updatePath string, value any) {
+	var mapObj, updatedMapObj map[string]any
+	var updatedObj cmdb.Object
+	err := s.Get(ctx, obj.GetKind(), name, namespace, GetOptions{}, &obj)
+
+	assert.NoError(t, err)
+	meta := obj.GetMeta()
+
+	if value == nil {
+		value = RandomString(6)
+	}
+
+	err = conversion.StructToMap(obj, &mapObj)
+	oldVal := conversion.GetMapValueByPath(mapObj, updatePath)
+	err = conversion.SetMapValueByPath(mapObj, updatePath, value)
+	assert.NoError(t, err)
+
+	jsonByte, err := json.Marshal(mapObj)
+	assert.NoError(t, err)
+
+	updatedObj, err = conversion.DecodeObject(jsonByte)
+	assert.NoError(t, err)
+
+	updatedObj = removeResourceManageFields(updatedObj)
+	err = s.Update(ctx, updatedObj, &updatedObj)
+	assert.NoError(t, err)
+
+	err = conversion.StructToMap(updatedObj, &updatedMapObj)
+	assert.NoError(t, err)
+
+	newValue := conversion.GetMapValueByPath(updatedMapObj, updatePath)
+	if oldVal == value {
+		assert.Equal(t, oldVal, newValue)
+	} else {
+		assert.Equal(t, value, newValue, fmt.Sprintf("%s %s %s", obj.GetKind(), meta.Name, meta.Namespace))
+	}
+
+	// 重复执行，无变化
+	var updatedObj2 cmdb.Object
+	updatedObj = removeResourceManageFields(updatedObj)
+	err = s.Update(ctx, updatedObj, &updatedObj2)
+	assert.NoError(t, err)
+	assert.Equal(t, updatedObj, updatedObj2)
+}
+
 func testDelete(t *testing.T, ctx context.Context, s *store, filePath string) {
 	obj, err := parseResourceFromFile(filePath)
 	meta := obj.GetMeta()
@@ -103,6 +153,45 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestUpdateResource(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup()
+
+	type Case struct {
+		o                           cmdb.Object
+		name, namespace, updatePath string
+		value                       any
+	}
+	cases := []Case{
+		{cmdb.NewSecret(), "test", "", "data.privateKey", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewDatacenter(), "test", "", "spec.provider", "huawei-cloud"},
+		{cmdb.NewZone(), "test", "", "spec.provider", "huawei-cloud"},
+		{cmdb.NewNamespace(), "test", "", "spec.bizEnv", RandomString(6)},
+		{cmdb.NewDeployTemplate(), "docker-compose-test", "test", "spec.deployArgs", RandomString(6)},
+		{cmdb.NewSCM(), "gitlab-test", "", "spec.url", "https://" + RandomString(6)},
+		{cmdb.NewHostNode(), "test", "", "spec.id", RandomString(22)},
+		{cmdb.NewHelmRepository(), "test", "", "spec.auth", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewContainerRegistry(), "harbor-test", "", "spec.auth.password", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewConfigCenter(), "apollo-test", "", "spec.apollo.auth", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewDeployPlatform(), "test", "", "spec.kubernetes.cluster.ca", base64.StdEncoding.EncodeToString([]byte(RandomString(6)))},
+		{cmdb.NewProject(), "go-devops", "", "spec.nameInChain", nil},
+		{cmdb.NewApp(), "go-app", "", "spec.scm.user", nil},
+		{cmdb.NewResourceRange(), "test", "test", "description", RandomString(6)},
+		{cmdb.NewOrchestration(), "test", "", "description", RandomString(6)},
+		{cmdb.NewAppDeployment(), "go-app", "test", "description", RandomString(6)},
+	}
+	for i := range cases {
+		testUpdate(
+			t, ctx, s,
+			cases[i].o,
+			cases[i].name,
+			cases[i].namespace,
+			cases[i].updatePath,
+			cases[i].value,
+		)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	TestCreate(t)
 	ctx, s, _ := testSetup()
@@ -110,4 +199,28 @@ func TestDelete(t *testing.T) {
 		// 倒序删除
 		testDelete(t, ctx, s, cases[len(cases)-i-1])
 	}
+}
+
+// 生成随机字符串
+func RandomString(length int) string {
+	charset := "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+		"0123456789"
+	seed := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(seed)
+
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[r.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+// 移除系统管理字段
+func removeResourceManageFields(o cmdb.Object) cmdb.Object {
+	meta := o.GetMeta()
+	meta.CreateRevision = 0
+	meta.Revision = 0
+	meta.Version = 0
+	return o
 }

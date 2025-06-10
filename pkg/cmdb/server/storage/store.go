@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"goTool/pkg/cmdb"
@@ -79,7 +80,7 @@ func (s *store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 		return err
 	}
 
-	if err = s.createReferences(ctx, obj); err != nil {
+	if err = s.checkTargetReferenceExist(ctx, obj); err != nil {
 		return err
 	}
 
@@ -95,10 +96,90 @@ func (s *store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 		return NewKeyExistsError(key, 0)
 	}
 
+	if err = s.createReferences(ctx, obj); err != nil {
+		return err
+	}
+
 	if out != nil {
 		return s.Get(ctx, kind, meta.Name, meta.Namespace, GetOptions{}, out)
 	}
 	return nil
+}
+
+func (s *store) Update(ctx context.Context, obj cmdb.Object, out *cmdb.Object) error {
+	if err := runtime.ValidateObject(obj); err != nil {
+		return err
+	}
+
+	kind := obj.GetKind()
+	meta := obj.GetMeta()
+	key := s.getStoragePath(obj)
+
+	if meta.Version != 0 || meta.Revision != 0 || meta.CreateRevision != 0 {
+		return fmt.Errorf("resourceVersion should not be set on objects to be updated")
+	}
+
+	for {
+		var originObj cmdb.Object
+		if err := s.Get(ctx, kind, meta.Name, meta.Namespace, GetOptions{}, &originObj); err != nil {
+			return err
+		}
+
+		originData, err := json.Marshal(originObj)
+		if err != nil {
+			return err
+		}
+		originMeta := originObj.GetMeta()
+
+		// 系统管理字段使用旧值
+		meta.CreateRevision = originMeta.CreateRevision
+		meta.Revision = originMeta.Revision
+		meta.Version = originMeta.Version
+		meta.CreationTimeStamp = originMeta.CreationTimeStamp
+		meta.ManagedFields.Time = originMeta.ManagedFields.Time
+		defaults.SetDefaults(obj)
+		data, err := json.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
+		// 无变更，直接返回
+		if bytes.Equal(originData, data) {
+			if out != nil {
+				return s.Get(ctx, kind, meta.Name, meta.Namespace, GetOptions{}, out)
+			}
+			return nil
+		}
+
+		// 更新此次变更的时间
+		meta.ManagedFields.Time = time.Now()
+
+		if err = s.checkTargetReferenceExist(ctx, obj); err != nil {
+			return err
+		}
+
+		txnResp, err := s.client.KV.Txn(ctx).If(
+			clientv3.Compare(clientv3.ModRevision(key), "=", originMeta.Revision),
+		).Then(
+			clientv3.OpPut(key, string(data)),
+		).Commit()
+		if err != nil {
+			return err
+		}
+		if !txnResp.Succeeded {
+			// Revision 不一致时应重试
+			continue
+		}
+
+		// 更新关联关系
+		if err = s.updateReferences(ctx, obj, originObj); err != nil {
+			return err
+		}
+
+		if out != nil {
+			return s.Get(ctx, kind, meta.Name, meta.Namespace, GetOptions{}, out)
+		}
+	}
 }
 
 func (s *store) Delete(ctx context.Context, kind, name, namespace string) error {
@@ -133,7 +214,7 @@ func (s *store) getStoragePath(obj cmdb.Object) string {
 	return key
 }
 
-// 验证关联对象是否存在，并创建引用关系
+// 创建引用关系
 func (s *store) createReferences(ctx context.Context, obj cmdb.Object) error {
 	meta := obj.GetMeta()
 	key := s.getStoragePath(obj)
@@ -179,7 +260,7 @@ func (s *store) createReferences(ctx context.Context, obj cmdb.Object) error {
 	return nil
 }
 
-// 验证关联对象是否存在，并创建引用关系
+// 删除引用关系
 func (s *store) deleteReferences(ctx context.Context, obj cmdb.Object) error {
 	meta := obj.GetMeta()
 	key := s.getStoragePath(obj)
@@ -208,6 +289,63 @@ func (s *store) deleteReferences(ctx context.Context, obj cmdb.Object) error {
 
 			refCmps = append(refCmps, found(refTargetKey))
 			refOps = append(refOps, clientv3.OpDelete(refKey))
+		}
+	}
+
+	txnResp, err := s.client.KV.Txn(ctx).If(
+		refCmps...,
+	).Then(
+		refOps...,
+	).Commit()
+	if err != nil {
+		return err
+	}
+	if !txnResp.Succeeded {
+		return NewInvalidObjError(key, fmt.Sprintf("reference object does not exists, %v.", refs))
+	}
+	return nil
+}
+
+// 更新引用关系
+func (s *store) updateReferences(ctx context.Context, obj cmdb.Object, originObj cmdb.Object) error {
+	if err := s.deleteReferences(ctx, obj); err != nil {
+		return err
+	}
+	if err := s.createReferences(ctx, obj); err != nil {
+		return err
+	}
+	return nil
+}
+
+// 检查引用的目标对象是否存在
+func (s *store) checkTargetReferenceExist(ctx context.Context, obj cmdb.Object) error {
+	meta := obj.GetMeta()
+	key := s.getStoragePath(obj)
+	refSet := map[string]bool{}
+	var refCmps []clientv3.Cmp
+	var refOps []clientv3.Op
+	refs := runtime.GetFieldValueByTag(reflect.ValueOf(obj), "", "reference")
+	for _, ref := range refs {
+		if ref.FieldValue != "" {
+			refKey := path.Join(s.pathPrefix, "references", ref.TagValue, ref.FieldValue, obj.GetKind(), meta.Name)
+			if _, ok := refSet[refKey]; ok {
+				// 去重
+				continue
+			}
+			refSet[refKey] = true
+			refObj, err := cmdb.NewResourceWithKind(ref.TagValue)
+			if err != nil {
+				return err
+			}
+			refMeta := refObj.GetMeta()
+			refMeta.Name = ref.FieldValue
+			if refMeta.HasNamespace() {
+				refMeta.Namespace = meta.Namespace
+			}
+			refTargetKey := s.getStoragePath(refObj)
+
+			refCmps = append(refCmps, found(refTargetKey))
+			refOps = append(refOps, clientv3.OpGet(refTargetKey, clientv3.WithKeysOnly()))
 		}
 	}
 

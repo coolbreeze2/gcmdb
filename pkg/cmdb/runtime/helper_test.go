@@ -21,3 +21,20 @@ func TestGetFieldValueByTag(t *testing.T) {
 	result := GetFieldValueByTag(v, "", "reference")
 	assert.Equal(t, []TagValuePair{{"Secret", "test"}}, result)
 }
+
+func TestGetFieldValueByTagMap(t *testing.T) {
+	m := map[string]string{}
+	v := reflect.ValueOf(m)
+	result := GetFieldValueByTag(v, "", "reference")
+	assert.Equal(t, []TagValuePair{}, result)
+}
+
+func TestGetFieldValueByTagList(t *testing.T) {
+	type Case struct {
+		Field1 []string `reference:"Secret"`
+	}
+	c := Case{Field1: []string{"v1", "v2"}}
+	v := reflect.ValueOf(c)
+	result := GetFieldValueByTag(v, "", "reference")
+	assert.Equal(t, []TagValuePair{{"Secret", "v1"}, {"Secret", "v2"}}, result)
+}

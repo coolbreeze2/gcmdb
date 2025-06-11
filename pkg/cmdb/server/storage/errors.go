@@ -7,19 +7,17 @@ import (
 const (
 	ErrCodeKeyNotFound int = iota + 1
 	ErrCodeKeyExists
-	ErrCodeResourceVersionConflicts
 	ErrCodeInvalidObj
-	ErrCodeUnreachable
 	ErrCodeResourceReferenced
+	ErrCodeReferencedNotExist
 )
 
 var errCodeToMessage = map[int]string{
-	ErrCodeKeyNotFound:              "key not found",
-	ErrCodeKeyExists:                "key exists",
-	ErrCodeResourceVersionConflicts: "resource version conflicts",
-	ErrCodeInvalidObj:               "invalid object",
-	ErrCodeUnreachable:              "server unreachable",
-	ErrCodeResourceReferenced:       "resource has been referenced",
+	ErrCodeKeyNotFound:        "key not found",
+	ErrCodeKeyExists:          "key exists",
+	ErrCodeInvalidObj:         "invalid object",
+	ErrCodeResourceReferenced: "resource has been referenced",
+	ErrCodeReferencedNotExist: "resource reference targert not exist",
 }
 
 func NewKeyNotFoundError(key string, rv int64) *StorageError {
@@ -38,25 +36,17 @@ func NewKeyExistsError(key string, rv int64) *StorageError {
 	}
 }
 
-func NewResourceVersionConflictsError(key string, rv int64) *StorageError {
-	return &StorageError{
-		Code:            ErrCodeResourceVersionConflicts,
-		Key:             key,
-		ResourceVersion: rv,
-	}
-}
-
-func NewUnreachableError(key string, rv int64) *StorageError {
-	return &StorageError{
-		Code:            ErrCodeUnreachable,
-		Key:             key,
-		ResourceVersion: rv,
-	}
-}
-
 func NewInvalidObjError(key, msg string) *StorageError {
 	return &StorageError{
 		Code:               ErrCodeInvalidObj,
+		Key:                key,
+		AdditionalErrorMsg: msg,
+	}
+}
+
+func NewReferencedNotExist(key, msg string) *StorageError {
+	return &StorageError{
+		Code:               ErrCodeReferencedNotExist,
 		Key:                key,
 		AdditionalErrorMsg: msg,
 	}
@@ -92,19 +82,19 @@ func IsExist(err error) bool {
 	return isErrCode(err, ErrCodeKeyExists)
 }
 
-// IsUnreachable returns true if and only if err indicates the server could not be reached.
-func IsUnreachable(err error) bool {
-	return isErrCode(err, ErrCodeUnreachable)
-}
-
-// IsConflict returns true if and only if err is a write conflict.
-func IsConflict(err error) bool {
-	return isErrCode(err, ErrCodeResourceVersionConflicts)
-}
-
 // IsInvalidObj returns true if and only if err is invalid error
 func IsInvalidObj(err error) bool {
 	return isErrCode(err, ErrCodeInvalidObj)
+}
+
+// IsResourceReferenced returns true if resource referenced by others
+func IsResourceReferenced(err error) bool {
+	return isErrCode(err, ErrCodeResourceReferenced)
+}
+
+// IsReferencedNotExist returns true if resource reference target not exist
+func IsReferencedNotExist(err error) bool {
+	return isErrCode(err, ErrCodeReferencedNotExist)
 }
 
 func isErrCode(err error, code int) bool {
@@ -135,8 +125,4 @@ func IsInternalError(err error) bool {
 
 func NewInternalError(reason string) InternalError {
 	return InternalError{reason}
-}
-
-func NewInternalErrorf(format string, a ...interface{}) InternalError {
-	return InternalError{fmt.Sprintf(format, a...)}
 }

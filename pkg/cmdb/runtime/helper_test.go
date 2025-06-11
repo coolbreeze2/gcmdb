@@ -32,8 +32,9 @@ func TestGetFieldValueByTagMap(t *testing.T) {
 func TestGetFieldValueByTagList(t *testing.T) {
 	type Case struct {
 		Field1 []string `reference:"Secret"`
+		Field2 []string `reference:"Secret"`
 	}
-	c := Case{Field1: []string{"v1", "v2"}}
+	c := Case{Field1: []string{"v1", "v1", "v2"}, Field2: []string{"v1", "v1", "v2"}}
 	v := reflect.ValueOf(c)
 	result := GetFieldValueByTag(v, "", "reference")
 	assert.Equal(t, []TagValuePair{{"Secret", "v1"}, {"Secret", "v2"}}, result)

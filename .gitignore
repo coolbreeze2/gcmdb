@@ -1,6 +1,7 @@
 .vscode/
 .git/
 .idea/
+.VSCodeCounter/
 NERD_tree*
 cmctl
 .coverage.out

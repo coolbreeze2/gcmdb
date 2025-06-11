@@ -36,7 +36,7 @@ var cases = []string{
 	"../../example/files/appdeployment.yaml",
 }
 
-func testSetup() (context.Context, *store, *clientv3.Client) {
+func testSetup(clearDb bool) (context.Context, *store, *clientv3.Client) {
 	endpoint := global.ServerSetting.ETCD_SERVER_HOST + ":" + global.ServerSetting.ETCD_SERVER_PORT
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{endpoint},
@@ -46,6 +46,9 @@ func testSetup() (context.Context, *store, *clientv3.Client) {
 	}
 	store := New(client, global.StoragePathPrefix)
 	ctx := context.Background()
+	if clearDb {
+		client.KV.Delete(ctx, "", clientv3.WithPrefix())
+	}
 	return ctx, store, client
 }
 
@@ -65,15 +68,13 @@ func testCreate(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.NoError(t, err)
 	err = s.Create(ctx, obj, &out)
 	if err != nil {
-		assert.IsType(t, &StorageError{}, err, err.Error())
-		assert.Equal(t, err.(*StorageError).Code, ErrCodeKeyExists)
+		assert.Equal(t, IsExist(err), true)
 	} else {
 		assert.NoError(t, err)
 	}
 
 	err = s.Create(ctx, obj, &out)
-	assert.IsType(t, &StorageError{}, err, err.Error())
-	assert.Equal(t, err.(*StorageError).Code, ErrCodeKeyExists)
+	assert.Equal(t, IsExist(err), true)
 }
 
 func testGet(t *testing.T, ctx context.Context, s *store, filePath string) {
@@ -108,7 +109,6 @@ func testUpdate(t *testing.T, ctx context.Context, s *store, obj cmdb.Object, na
 	updatedObj, err = conversion.DecodeObject(jsonByte)
 	assert.NoError(t, err)
 
-	updatedObj = removeResourceManageFields(updatedObj)
 	err = s.Update(ctx, updatedObj, &updatedObj)
 	assert.NoError(t, err)
 
@@ -124,7 +124,6 @@ func testUpdate(t *testing.T, ctx context.Context, s *store, obj cmdb.Object, na
 
 	// 重复执行，无变化
 	var updatedObj2 cmdb.Object
-	updatedObj = removeResourceManageFields(updatedObj)
 	err = s.Update(ctx, updatedObj, &updatedObj2)
 	assert.NoError(t, err)
 	assert.Equal(t, updatedObj, updatedObj2)
@@ -138,24 +137,115 @@ func testDelete(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.NoError(t, err)
 }
 
+func TestCreateWithVersion(t *testing.T) {
+	var out cmdb.Object
+	ctx, s, _ := testSetup(true)
+	obj, err := parseResourceFromFile(cases[0])
+	meta := obj.GetMeta()
+	meta.Version = 999
+	meta.Revision = 999
+	meta.CreateRevision = 999
+	assert.NoError(t, err)
+	err = s.Create(ctx, obj, &out)
+	assert.Equal(t, "resourceVersion should not be set on objects to be created", err.Error())
+}
+
+func TestCreateWithInvalid(t *testing.T) {
+	ctx, s, _ := testSetup(true)
+	obj := cmdb.NewSecret()
+	err := s.Create(ctx, obj, nil)
+	assert.Equal(t, IsInvalidObj(err), true)
+}
+
+func TestCreateWithRefNotExist(t *testing.T) {
+	ctx, s, _ := testSetup(true)
+	obj, err := parseResourceFromFile(cases[1])
+	assert.NoError(t, err)
+	err = s.Create(ctx, obj, nil)
+	assert.Equal(t, IsReferencedNotExist(err), true)
+}
+
+func TestCreateOutNil(t *testing.T) {
+	ctx, s, _ := testSetup(true)
+	obj, err := parseResourceFromFile(cases[0])
+	assert.NoError(t, err)
+	err = s.Create(ctx, obj, nil)
+	assert.NoError(t, err)
+}
+
 func TestCreate(t *testing.T) {
-	ctx, s, _ := testSetup()
+	ctx, s, _ := testSetup(true)
 	for i := range cases {
 		testCreate(t, ctx, s, cases[i])
 	}
 }
 
+func TestGetInvalidClient(t *testing.T) {
+	client, _ := clientv3.New(clientv3.Config{
+		Endpoints: []string{"invalid-endpoint-url"},
+	})
+	s := New(client, global.StoragePathPrefix)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	err := s.Get(ctx, "app", "", "", GetOptions{}, nil)
+	assert.Equal(t, IsInternalError(err), true)
+}
+
+func TestGetInvalidKind(t *testing.T) {
+	ctx, s, _ := testSetup(false)
+	err := s.Get(ctx, "invalidKind", "", "", GetOptions{}, nil)
+	assert.IsType(t, cmdb.ResourceTypeError{}, err)
+}
+
+func TestGetNotFoundError(t *testing.T) {
+	ctx, s, _ := testSetup(false)
+	err := s.Get(ctx, "app", "invalid-app-name", "", GetOptions{}, nil)
+	assert.Equal(t, IsNotFound(err), true)
+}
+
+func TestGetIgnoreNotFoundError(t *testing.T) {
+	ctx, s, _ := testSetup(false)
+	err := s.Get(ctx, "app", "invalid-app-name", "", GetOptions{IgnoreNotFound: true}, nil)
+	assert.NoError(t, err)
+}
+
 func TestGet(t *testing.T) {
 	TestCreate(t)
-	ctx, s, _ := testSetup()
+	ctx, s, _ := testSetup(false)
 	for i := range cases {
 		testGet(t, ctx, s, cases[i])
 	}
 }
 
+func TestUpdateWithInvalid(t *testing.T) {
+	ctx, s, _ := testSetup(true)
+	obj := cmdb.NewSecret()
+	err := s.Update(ctx, obj, nil)
+	assert.Equal(t, IsInvalidObj(err), true)
+}
+
+func TestUpdateNotFound(t *testing.T) {
+	ctx, s, _ := testSetup(true)
+	obj, err := parseResourceFromFile(cases[0])
+	obj.GetMeta().Name = "a-not-found-name"
+	err = s.Update(ctx, obj, nil)
+	assert.Equal(t, IsNotFound(err), true)
+}
+
+func TestUpdateWithRefNotExist(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	obj := cmdb.Datacenter{
+		ResourceBase: *cmdb.NewResourceBase("Datacenter", false),
+		Spec:         cmdb.DatacenterSpec{Provider: "huawei-cloud", PrivateKey: "a-not-exist-secret"},
+	}
+	obj.Metadata.Name = "test"
+	err := s.Update(ctx, &obj, nil)
+	assert.Equal(t, IsReferencedNotExist(err), true, err.Error())
+}
+
 func TestUpdateResource(t *testing.T) {
 	TestCreate(t)
-	ctx, s, _ := testSetup()
+	ctx, s, _ := testSetup(false)
 
 	type Case struct {
 		o                           cmdb.Object
@@ -192,9 +282,31 @@ func TestUpdateResource(t *testing.T) {
 	}
 }
 
+func TestDeleteWhenReferenced(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	obj, err := parseResourceFromFile(cases[0])
+	assert.NoError(t, err)
+	meta := obj.GetMeta()
+	err = s.Delete(ctx, obj.GetKind(), meta.Name, meta.Namespace)
+	assert.Equal(t, IsResourceReferenced(err), true)
+}
+
+func TestDeleteInvalidKind(t *testing.T) {
+	ctx, s, _ := testSetup(false)
+	err := s.Delete(ctx, "invalidKind", "", "")
+	assert.IsType(t, cmdb.ResourceTypeError{}, err)
+}
+
+func TestDeleteNotFoundError(t *testing.T) {
+	ctx, s, _ := testSetup(false)
+	err := s.Delete(ctx, "app", "invalid-app-name", "")
+	assert.Equal(t, IsNotFound(err), true)
+}
+
 func TestDelete(t *testing.T) {
 	TestCreate(t)
-	ctx, s, _ := testSetup()
+	ctx, s, _ := testSetup(false)
 	for i := range cases {
 		// 倒序删除
 		testDelete(t, ctx, s, cases[len(cases)-i-1])

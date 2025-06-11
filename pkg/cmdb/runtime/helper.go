@@ -16,6 +16,7 @@ func ValidateObject(r cmdb.Object) error {
 
 // 递归遍历结构体所有字段
 func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValuePair {
+	refSet := map[string]bool{}
 	result := []TagValuePair{}
 	v = reflect.Indirect(v)
 	t := v.Type()
@@ -66,13 +67,26 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 				if item.Kind() == reflect.Struct || (item.Kind() == reflect.Ptr && !item.IsNil()) {
 					result = append(result, GetFieldValueByTag(item, itemPath, tagName)...)
 				} else if tagValue != "" {
-					fieldValue := item.Interface().(string)
-					if fieldValue != "" {
-						result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue})
+					switch fieldValue := item.Interface().(type) {
+					case string:
+						if fieldValue != "" {
+							result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue})
+						}
 					}
 				}
 			}
 		}
 	}
-	return result
+
+	// 去重
+	uniqResult := []TagValuePair{}
+	for _, vp := range result {
+		refKey := fmt.Sprintf("%s/%s", vp.TagValue, vp.FieldValue)
+		if _, ok := refSet[refKey]; ok {
+			continue
+		}
+		refSet[refKey] = true
+		uniqResult = append(uniqResult, vp)
+	}
+	return uniqResult
 }

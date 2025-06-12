@@ -86,6 +86,16 @@ func testGet(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.NoError(t, err)
 }
 
+func testGetList(t *testing.T, ctx context.Context, s *store, filePath string) {
+	var out []cmdb.Object
+	obj, err := parseResourceFromFile(filePath)
+	meta := obj.GetMeta()
+	assert.NoError(t, err)
+	err = s.GetList(ctx, obj.GetKind(), meta.Namespace, ListOptions{}, &out)
+	assert.NoError(t, err)
+	assert.Less(t, 0, len(out))
+}
+
 func testUpdate(t *testing.T, ctx context.Context, s *store, obj cmdb.Object, name, namespace, updatePath string, value any) {
 	var mapObj, updatedMapObj map[string]any
 	var updatedObj cmdb.Object
@@ -213,6 +223,51 @@ func TestGet(t *testing.T) {
 	ctx, s, _ := testSetup(false)
 	for i := range cases {
 		testGet(t, ctx, s, cases[i])
+	}
+}
+
+func TestGetListAll(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	var out []cmdb.Object
+	err := s.GetList(ctx, "app", "", ListOptions{All: true}, &out)
+	assert.NoError(t, err)
+	assert.Less(t, 0, len(out))
+}
+
+func TestGetListWithLabelSelector(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	var out []cmdb.Object
+	err := s.GetList(ctx, "app", "", ListOptions{LabelSelector: map[string]string{"language": "python"}}, &out)
+	assert.NoError(t, err)
+	assert.Less(t, 0, len(out))
+
+	var out1 []cmdb.Object
+	err = s.GetList(ctx, "app", "", ListOptions{LabelSelector: map[string]string{"language": "a-invalid-lang"}}, &out1)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(out1))
+}
+
+func TestGetListWithPage(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	var out []cmdb.Object
+	err := s.GetList(ctx, "app", "", ListOptions{Page: 2, Limit: 10}, &out)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(out))
+
+	var out1 []cmdb.Object
+	err = s.GetList(ctx, "app", "", ListOptions{Page: 1, Limit: 10}, &out1)
+	assert.NoError(t, err)
+	assert.Less(t, 0, len(out1))
+}
+
+func TestGetList(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	for i := range cases {
+		testGetList(t, ctx, s, cases[i])
 	}
 }
 

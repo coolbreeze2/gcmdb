@@ -67,6 +67,72 @@ func (s *store) Get(ctx context.Context, kind, name, namespace string, opts GetO
 	return decode(kv, out)
 }
 
+func (s *store) GetList(ctx context.Context, kind, namespace string, opts ListOptions, out *[]cmdb.Object) error {
+	key := strings.ToLower(kind) + "s"
+	if namespace != "" && !opts.All {
+		key = path.Join(s.pathPrefix, key, namespace)
+	} else {
+		key = path.Join(s.pathPrefix, key)
+	}
+	if opts.All {
+		opts.Limit = 0
+	}
+	key += "/"
+	var minCreateRevision, maxCreateRevision int64
+	if len(opts.LabelSelector) == 0 && len(opts.FieldSelector) == 0 {
+		rangeLimit := opts.Page * opts.Limit
+		ops := []clientv3.OpOption{
+			clientv3.WithLimit(rangeLimit),
+			clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortAscend),
+			clientv3.WithKeysOnly(),
+			clientv3.WithPrefix(),
+		}
+		keysResp, err := s.client.KV.Get(ctx, key, ops...)
+		if err != nil {
+			return NewInternalError(err.Error())
+		}
+		count := keysResp.Count
+		var minKVIndex int64
+		if opts.Page > 1 {
+			minKVIndex = (opts.Page - 1) * opts.Limit
+		}
+		maxKVIndex := minKVIndex + opts.Limit + 1
+		if maxKVIndex >= count {
+			maxKVIndex = count - 1
+		}
+		if minKVIndex+1 > count {
+			return nil
+		}
+		minKV := keysResp.Kvs[minKVIndex]
+		maxKV := keysResp.Kvs[maxKVIndex]
+		minCreateRevision = minKV.CreateRevision
+		maxCreateRevision = maxKV.CreateRevision
+	}
+	ops := []clientv3.OpOption{
+		clientv3.WithMinCreateRev(minCreateRevision),
+		clientv3.WithMaxCreateRev(maxCreateRevision),
+		clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortAscend),
+		clientv3.WithPrefix(),
+	}
+	kvResp, err := s.client.KV.Get(ctx, key, ops...)
+	if err != nil {
+		return NewInternalError(err.Error())
+	}
+	for _, kvs := range kvResp.Kvs {
+		var obj cmdb.Object
+		err = decode(kvs, &obj)
+		if err != nil {
+			return err
+		}
+		if len(opts.LabelSelector) != 0 && !mactchSelector(opts.LabelSelector, obj.GetMeta().Labels) {
+			continue
+		}
+		// TODO: field selector
+		*out = append(*out, obj)
+	}
+	return nil
+}
+
 func (s *store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) error {
 	kind := obj.GetKind()
 	meta := obj.GetMeta()
@@ -210,7 +276,7 @@ func (s *store) Delete(ctx context.Context, kind, name, namespace string) error 
 // 获取资源存储路径
 func (s *store) getStoragePath(obj cmdb.Object) string {
 	meta := obj.GetMeta()
-	key := path.Join(strings.ToLower(obj.GetKind()) + "s")
+	key := strings.ToLower(obj.GetKind()) + "s"
 	if meta.HasNamespace() {
 		key = path.Join(key, meta.Namespace)
 	}
@@ -324,4 +390,13 @@ func notFound(key string) clientv3.Cmp {
 
 func found(key string) clientv3.Cmp {
 	return clientv3.Compare(clientv3.ModRevision(key), "!=", 0)
+}
+
+func mactchSelector(selector map[string]string, labels map[string]string) bool {
+	for lk, lv := range selector {
+		if labels[lk] != lv {
+			return false
+		}
+	}
+	return true
 }

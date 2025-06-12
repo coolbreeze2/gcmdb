@@ -226,6 +226,15 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestCount(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	ctx.Done()
+	cnt, err := s.Count(ctx, "app", "")
+	assert.NoError(t, err)
+	assert.Less(t, int64(0), cnt)
+}
+
 func TestGetListAll(t *testing.T) {
 	TestCreate(t)
 	ctx, s, _ := testSetup(false)

@@ -67,17 +67,20 @@ func (s *store) Get(ctx context.Context, kind, name, namespace string, opts GetO
 	return decode(kv, out)
 }
 
-func (s *store) GetList(ctx context.Context, kind, namespace string, opts ListOptions, out *[]cmdb.Object) error {
-	key := strings.ToLower(kind) + "s"
-	if namespace != "" && !opts.All {
-		key = path.Join(s.pathPrefix, key, namespace)
-	} else {
-		key = path.Join(s.pathPrefix, key)
+func (s *store) Count(ctx context.Context, kind, namespace string) (int64, error) {
+	key := s.getStoragePathPrefix(kind, namespace, false)
+	getResp, err := s.client.KV.Get(ctx, key, clientv3.WithRange(clientv3.GetPrefixRangeEnd(key)), clientv3.WithCountOnly())
+	if err != nil {
+		return 0, err
 	}
+	return getResp.Count, nil
+}
+
+func (s *store) GetList(ctx context.Context, kind, namespace string, opts ListOptions, out *[]cmdb.Object) error {
+	key := s.getStoragePathPrefix(kind, namespace, opts.All)
 	if opts.All {
 		opts.Limit = 0
 	}
-	key += "/"
 	var minCreateRevision, maxCreateRevision int64
 	if len(opts.LabelSelector) == 0 && len(opts.FieldSelector) == 0 {
 		rangeLimit := opts.Page * opts.Limit
@@ -281,6 +284,17 @@ func (s *store) getStoragePath(obj cmdb.Object) string {
 		key = path.Join(key, meta.Namespace)
 	}
 	key = path.Join(s.pathPrefix, key, meta.Name)
+	return key
+}
+
+func (s *store) getStoragePathPrefix(kind, namespace string, all bool) string {
+	key := strings.ToLower(kind) + "s"
+	if namespace != "" && !all {
+		key = path.Join(s.pathPrefix, key, namespace)
+	} else {
+		key = path.Join(s.pathPrefix, key)
+	}
+	key += "/"
 	return key
 }
 

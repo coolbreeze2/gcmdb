@@ -14,7 +14,7 @@ const (
 
 var errCodeToMessage = map[int]string{
 	ErrCodeKeyNotFound:        "key not found",
-	ErrCodeKeyExists:          "key exists",
+	ErrCodeKeyExists:          "key already exist",
 	ErrCodeInvalidObj:         "invalid object",
 	ErrCodeResourceReferenced: "resource has been referenced",
 	ErrCodeReferencedNotExist: "resource reference targert not exist",

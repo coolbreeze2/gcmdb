@@ -89,8 +89,8 @@ func (c CMDBClient) ListResource(r cmdb.Object, opt *ListOptions) ([]map[string]
 	query := map[string]string{
 		"page":           strconv.FormatInt(opt.Page, 10),
 		"limit":          strconv.FormatInt(opt.Limit, 10),
-		"selector":       EncodeSelector(opt.Selector),
-		"field_selector": EncodeSelector(opt.FieldSelector),
+		"selector":       conversion.EncodeSelector(opt.Selector),
+		"field_selector": conversion.EncodeSelector(opt.FieldSelector),
 	}
 	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&result).Get(url)
 
@@ -191,32 +191,6 @@ func (c CMDBClient) getCMDBAPIURL() string {
 
 func LowerKind(r cmdb.Object) string {
 	return strings.ToLower(r.GetKind()) + "s"
-}
-
-// 解析 Selector map to string
-func EncodeSelector(selector map[string]string) string {
-	var pairs []string
-
-	for k, v := range selector {
-		pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	result := strings.Join(pairs, ",")
-	return result
-}
-
-// 解析 Selector string to map
-func ParseSelector(s string) map[string]string {
-	values := strings.Split(s, ",")
-	_dict := map[string]string{}
-	for _, value := range values {
-		if value == "" {
-			continue
-		}
-		splitedV := strings.Split(value, "=")
-		_dict[splitedV[0]] = splitedV[1]
-	}
-	return _dict
 }
 
 // 移除系统管理字段

@@ -94,3 +94,29 @@ func SetMapValueByPath(m map[string]any, path string, value any) error {
 	}
 	return nil
 }
+
+// 解析 Selector map to string
+func EncodeSelector(selector map[string]string) string {
+	var pairs []string
+
+	for k, v := range selector {
+		pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	result := strings.Join(pairs, ",")
+	return result
+}
+
+// 解析 Selector string to map
+func ParseSelector(s string) map[string]string {
+	values := strings.Split(s, ",")
+	_dict := map[string]string{}
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		splitedV := strings.Split(value, "=")
+		_dict[splitedV[0]] = splitedV[1]
+	}
+	return _dict
+}

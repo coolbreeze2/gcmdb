@@ -36,7 +36,7 @@ var cases = []string{
 	"../../example/files/appdeployment.yaml",
 }
 
-func testSetup(clearDb bool) (context.Context, *store, *clientv3.Client) {
+func testSetup(clearDb bool) (context.Context, *Store, *clientv3.Client) {
 	endpoint := global.ServerSetting.ETCD_SERVER_HOST + ":" + global.ServerSetting.ETCD_SERVER_PORT
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{endpoint},
@@ -62,7 +62,7 @@ func parseResourceFromFile(filePath string) (cmdb.Object, error) {
 	return conversion.DecodeObject(file)
 }
 
-func testCreate(t *testing.T, ctx context.Context, s *store, filePath string) {
+func testCreate(t *testing.T, ctx context.Context, s *Store, filePath string) {
 	var out cmdb.Object
 	obj, err := parseResourceFromFile(filePath)
 	assert.NoError(t, err)
@@ -77,7 +77,7 @@ func testCreate(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.Equal(t, IsExist(err), true)
 }
 
-func testGet(t *testing.T, ctx context.Context, s *store, filePath string) {
+func testGet(t *testing.T, ctx context.Context, s *Store, filePath string) {
 	var out cmdb.Object
 	obj, err := parseResourceFromFile(filePath)
 	meta := obj.GetMeta()
@@ -86,7 +86,7 @@ func testGet(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.NoError(t, err)
 }
 
-func testGetList(t *testing.T, ctx context.Context, s *store, filePath string) {
+func testGetList(t *testing.T, ctx context.Context, s *Store, filePath string) {
 	var out []cmdb.Object
 	obj, err := parseResourceFromFile(filePath)
 	meta := obj.GetMeta()
@@ -96,7 +96,7 @@ func testGetList(t *testing.T, ctx context.Context, s *store, filePath string) {
 	assert.Less(t, 0, len(out))
 }
 
-func testUpdate(t *testing.T, ctx context.Context, s *store, obj cmdb.Object, name, namespace, updatePath string, value any) {
+func testUpdate(t *testing.T, ctx context.Context, s *Store, obj cmdb.Object, name, namespace, updatePath string, value any) {
 	var mapObj, updatedMapObj map[string]any
 	var updatedObj cmdb.Object
 	err := s.Get(ctx, obj.GetKind(), name, namespace, GetOptions{}, &obj)
@@ -136,10 +136,10 @@ func testUpdate(t *testing.T, ctx context.Context, s *store, obj cmdb.Object, na
 	var updatedObj2 cmdb.Object
 	err = s.Update(ctx, updatedObj, &updatedObj2)
 	assert.NoError(t, err)
-	assert.Equal(t, updatedObj, updatedObj2)
+	assert.Equal(t, nil, updatedObj2)
 }
 
-func testDelete(t *testing.T, ctx context.Context, s *store, filePath string) {
+func testDelete(t *testing.T, ctx context.Context, s *Store, filePath string) {
 	obj, err := parseResourceFromFile(filePath)
 	meta := obj.GetMeta()
 	assert.NoError(t, err)

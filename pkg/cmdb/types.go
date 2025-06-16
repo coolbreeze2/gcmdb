@@ -201,7 +201,7 @@ func NewResourceBase(kind string, namespaced bool) *ResourceBase {
 
 type Secret struct {
 	ResourceBase `json:",inline"`
-	Data         map[string]string `json:"data" validate:"required"`
+	Data         map[string]string `json:"data" validate:"required,base64map"`
 }
 
 func (r *Secret) GetKind() string {

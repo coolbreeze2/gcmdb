@@ -27,24 +27,24 @@ const (
 	referenceActionCheckExist
 )
 
-type store struct {
+type Store struct {
 	client     *clientv3.Client
 	pathPrefix string
 }
 
-func New(c *clientv3.Client, prefix string) *store {
+func New(c *clientv3.Client, prefix string) *Store {
 	return newStore(c, prefix)
 }
 
-func newStore(c *clientv3.Client, prefix string) *store {
-	result := &store{
+func newStore(c *clientv3.Client, prefix string) *Store {
+	result := &Store{
 		client:     c,
 		pathPrefix: prefix,
 	}
 	return result
 }
 
-func (s *store) Get(ctx context.Context, kind, name, namespace string, opts GetOptions, out *cmdb.Object) error {
+func (s *Store) Get(ctx context.Context, kind, name, namespace string, opts GetOptions, out *cmdb.Object) error {
 	obj, err := cmdb.NewResourceWithKind(kind)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (s *store) Get(ctx context.Context, kind, name, namespace string, opts GetO
 	return decode(kv, out)
 }
 
-func (s *store) Count(ctx context.Context, kind, namespace string) (int64, error) {
+func (s *Store) Count(ctx context.Context, kind, namespace string) (int64, error) {
 	key := s.getStoragePathPrefix(kind, namespace, false)
 	getResp, err := s.client.KV.Get(ctx, key, clientv3.WithRange(clientv3.GetPrefixRangeEnd(key)), clientv3.WithCountOnly())
 	if err != nil {
@@ -76,7 +76,9 @@ func (s *store) Count(ctx context.Context, kind, namespace string) (int64, error
 	return getResp.Count, nil
 }
 
-func (s *store) GetList(ctx context.Context, kind, namespace string, opts ListOptions, out *[]cmdb.Object) error {
+// TODO: GetNames
+
+func (s *Store) GetList(ctx context.Context, kind, namespace string, opts ListOptions, out *[]cmdb.Object) error {
 	key := s.getStoragePathPrefix(kind, namespace, opts.All)
 	if opts.All {
 		opts.Limit = 0
@@ -136,7 +138,7 @@ func (s *store) GetList(ctx context.Context, kind, namespace string, opts ListOp
 	return nil
 }
 
-func (s *store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) error {
+func (s *Store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) error {
 	kind := obj.GetKind()
 	meta := obj.GetMeta()
 	key := s.getStoragePath(obj)
@@ -183,7 +185,7 @@ func (s *store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 	return nil
 }
 
-func (s *store) Update(ctx context.Context, obj cmdb.Object, out *cmdb.Object) error {
+func (s *Store) Update(ctx context.Context, obj cmdb.Object, out *cmdb.Object) error {
 	kind := obj.GetKind()
 	meta := obj.GetMeta()
 	key := s.getStoragePath(obj)
@@ -219,7 +221,7 @@ func (s *store) Update(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 		// 无变更，直接返回
 		if bytes.Equal(originData, data) {
 			if out != nil {
-				*out = originObj
+				*out = nil
 			}
 			return nil
 		}
@@ -255,7 +257,7 @@ func (s *store) Update(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 	}
 }
 
-func (s *store) Delete(ctx context.Context, kind, name, namespace string) error {
+func (s *Store) Delete(ctx context.Context, kind, name, namespace string) error {
 	obj, err := cmdb.NewResourceWithKind(kind)
 	if err != nil {
 		return err
@@ -277,7 +279,7 @@ func (s *store) Delete(ctx context.Context, kind, name, namespace string) error 
 }
 
 // 获取资源存储路径
-func (s *store) getStoragePath(obj cmdb.Object) string {
+func (s *Store) getStoragePath(obj cmdb.Object) string {
 	meta := obj.GetMeta()
 	key := strings.ToLower(obj.GetKind()) + "s"
 	if meta.HasNamespace() {
@@ -287,7 +289,7 @@ func (s *store) getStoragePath(obj cmdb.Object) string {
 	return key
 }
 
-func (s *store) getStoragePathPrefix(kind, namespace string, all bool) string {
+func (s *Store) getStoragePathPrefix(kind, namespace string, all bool) string {
 	key := strings.ToLower(kind) + "s"
 	if namespace != "" && !all {
 		key = path.Join(s.pathPrefix, key, namespace)
@@ -299,7 +301,7 @@ func (s *store) getStoragePathPrefix(kind, namespace string, all bool) string {
 }
 
 // 创建/删除 引用关系，或检查引用的目标对象是否存在
-func (s *store) handleReferences(ctx context.Context, obj cmdb.Object, action referenceAction) error {
+func (s *Store) handleReferences(ctx context.Context, obj cmdb.Object, action referenceAction) error {
 	meta := obj.GetMeta()
 	key := s.getStoragePath(obj)
 	var refCmps []clientv3.Cmp
@@ -344,7 +346,7 @@ func (s *store) handleReferences(ctx context.Context, obj cmdb.Object, action re
 }
 
 // 更新引用关系
-func (s *store) updateReferences(ctx context.Context, obj cmdb.Object, originObj cmdb.Object) error {
+func (s *Store) updateReferences(ctx context.Context, obj cmdb.Object, originObj cmdb.Object) error {
 	if err := s.handleReferences(ctx, obj, referenceActionDelete); err != nil {
 		return err
 	}
@@ -355,7 +357,7 @@ func (s *store) updateReferences(ctx context.Context, obj cmdb.Object, originObj
 }
 
 // 检查当前对象是否被引用
-func (s *store) checkExistReferenced(ctx context.Context, obj cmdb.Object) error {
+func (s *Store) checkExistReferenced(ctx context.Context, obj cmdb.Object) error {
 	kind := obj.GetKind()
 	name := obj.GetMeta().Name
 	key := path.Join(s.pathPrefix, "references", kind, name) + "/"

@@ -101,8 +101,8 @@ func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
 		Namespace:     namespace,
 		Page:          page,
 		Limit:         limit,
-		Selector:      client.ParseSelector(selector),
-		FieldSelector: client.ParseSelector(field_selector),
+		Selector:      conversion.ParseSelector(selector),
+		FieldSelector: conversion.ParseSelector(field_selector),
 	}
 }
 

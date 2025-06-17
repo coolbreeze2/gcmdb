@@ -7,6 +7,7 @@ import (
 	"goTool/pkg/cmdb/conversion"
 	"goTool/pkg/cmdb/server/storage"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 
@@ -19,8 +20,15 @@ const PathPrefix = "/api/v1"
 
 var store *storage.Store
 
-func InstallApi(r *chi.Mux) {
-	store = newStorage()
+func InstallApi(r *chi.Mux, s *storage.Store) {
+	if s == nil {
+		store = newStorage()
+	} else {
+		store = s
+	}
+
+	r.Get(path.Join(PathPrefix, "health"), healthFunc())
+
 	for _, kind := range global.ResourceOrder {
 		addGenericApi(r, kind)
 	}
@@ -44,6 +52,7 @@ func addGenericApi(r *chi.Mux, kind string) {
 	}
 
 	r.Get(basePath+"/count/", countFunc(kind))
+	r.Get(basePath+"/names/", getNamesFunc(kind))
 
 	if namespaced {
 		basePath = namespacedPath
@@ -57,6 +66,17 @@ func addGenericApi(r *chi.Mux, kind string) {
 			r.Delete("/", deleteFunc(kind))
 		})
 	})
+}
+
+func healthFunc() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if store.Health(r.Context()) {
+			render.Status(r, http.StatusOK)
+			render.Respond(w, r, "health")
+		}
+		render.Status(r, http.StatusFailedDependency)
+		render.Respond(w, r, "unhealth")
+	}
 }
 
 func getFunc(kind string) http.HandlerFunc {
@@ -87,6 +107,20 @@ func countFunc(kind string) http.HandlerFunc {
 		}
 		render.Status(r, http.StatusOK)
 		render.Respond(w, r, cnt)
+	}
+}
+
+func getNamesFunc(kind string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		namespace := r.URL.Query().Get("namespace")
+
+		names, err := store.GetNames(r.Context(), kind, namespace)
+		if err != nil {
+			handleStorageErr(w, r, err)
+			return
+		}
+		render.Status(r, http.StatusOK)
+		render.Respond(w, r, names)
 	}
 }
 

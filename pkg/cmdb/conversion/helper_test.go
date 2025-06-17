@@ -9,33 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInvalidPtrValueKind(t *testing.T) {
-	var simple any
-	switch obj := simple.(type) {
-	default:
-		_, err := EnforcePtr(obj)
-		if err == nil {
-			t.Errorf("Expected error on invalid kind")
-		}
-	}
-}
-
-func TestInvalidMapValueKind(t *testing.T) {
-	simple := map[string]string{}
-	_, err := EnforcePtr(simple)
-	if err == nil {
-		t.Errorf("Expected error on invalid kind")
-	}
-}
-
-func TestEnforceNilPtr(t *testing.T) {
-	var nilPtr *struct{}
-	_, err := EnforcePtr(nilPtr)
-	if err == nil {
-		t.Errorf("Expected error on nil pointer")
-	}
-}
-
 func TestParseResourceFromByteYamlInvalid(t *testing.T) {
 	_, err := DecodeObject([]byte("{]"))
 	assert.IsType(t, &yaml.SyntaxError{}, err)

@@ -28,6 +28,10 @@ func TestApplyResource(t *testing.T) {
 		{"apply", "-f", "../example/files/orchestration.yaml"},
 		{"apply", "-f", "../example/files/appdeployment.yaml"},
 	}
+
+	ts := testServer()
+	defer ts.Close()
+
 	for i := range cases {
 		RootCmd.SetArgs(cases[i])
 		err := RootCmd.Execute()
@@ -79,6 +83,10 @@ data:
 		{"apply", "-f", "../example/files/secret.yaml"},
 		{"apply", "-f", tempFilename},
 	}
+
+	ts := testServer()
+	defer ts.Close()
+
 	for i := range cases {
 		RootCmd.SetArgs(cases[i])
 		err := RootCmd.Execute()
@@ -99,6 +107,9 @@ spec:
   provider: alibaba-cloud
   privateKey: a-not-exist-ref`))
 	assert.NoError(t, err)
+
+	ts := testServer()
+	defer ts.Close()
 
 	RootCmd.SetArgs([]string{"apply", "-f", tempFilename})
 	assertOsExit(t, Execute, 1)

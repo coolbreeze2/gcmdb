@@ -7,6 +7,9 @@ import (
 )
 
 func TestCompleteFunc(t *testing.T) {
+	ts := testServer()
+	defer ts.Close()
+
 	RootCmd.SetArgs([]string{"apply", "-f", "../example/files"})
 	err := RootCmd.Execute()
 	assert.NoError(t, err)
@@ -15,6 +18,9 @@ func TestCompleteFunc(t *testing.T) {
 }
 
 func TestCompleteName(t *testing.T) {
+	ts := testServer()
+	defer ts.Close()
+
 	RootCmd.SetArgs([]string{"apply", "-f", "../example/files"})
 	err := RootCmd.Execute()
 	assert.NoError(t, err)

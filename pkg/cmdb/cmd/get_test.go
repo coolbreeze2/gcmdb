@@ -45,6 +45,10 @@ func TestGetResource(t *testing.T) {
 		c6 := append([]string{"get", r[0], r[1], "-o", "json"}, ident...)
 		cases = append(cases, c6)
 	}
+
+	ts := testServer()
+	defer ts.Close()
+
 	for i := range cases {
 		RootCmd.SetArgs(cases[i])
 		err := RootCmd.Execute()

@@ -44,6 +44,11 @@ func newStore(c *clientv3.Client, prefix string) *Store {
 	return result
 }
 
+func (s *Store) Health(ctx context.Context) bool {
+	_, err := s.client.Status(ctx, s.client.Endpoints()[0])
+	return err == nil
+}
+
 func (s *Store) Get(ctx context.Context, kind, name, namespace string, opts GetOptions, out *cmdb.Object) error {
 	obj, err := cmdb.NewResourceWithKind(kind)
 	if err != nil {
@@ -71,12 +76,24 @@ func (s *Store) Count(ctx context.Context, kind, namespace string) (int64, error
 	key := s.getStoragePathPrefix(kind, namespace, false)
 	getResp, err := s.client.KV.Get(ctx, key, clientv3.WithRange(clientv3.GetPrefixRangeEnd(key)), clientv3.WithCountOnly())
 	if err != nil {
-		return 0, err
+		return 0, NewInternalError(err.Error())
 	}
 	return getResp.Count, nil
 }
 
-// TODO: GetNames
+func (s *Store) GetNames(ctx context.Context, kind, namespace string) ([]string, error) {
+	names := []string{}
+	key := s.getStoragePathPrefix(kind, namespace, false)
+	getResp, err := s.client.KV.Get(ctx, key, clientv3.WithRange(clientv3.GetPrefixRangeEnd(key)), clientv3.WithKeysOnly())
+	if err != nil {
+		return names, NewInternalError(err.Error())
+	}
+	for _, kv := range getResp.Kvs {
+		splitedKey := strings.Split(string(kv.Key), "/")
+		names = append(names, splitedKey[len(splitedKey)-1])
+	}
+	return names, nil
+}
 
 func (s *Store) GetList(ctx context.Context, kind, namespace string, opts ListOptions, out *[]cmdb.Object) error {
 	key := s.getStoragePathPrefix(kind, namespace, opts.All)
@@ -156,7 +173,7 @@ func (s *Store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 	defaults.SetDefaults(obj)
 	data, err := json.Marshal(obj)
 	if err != nil {
-		return err
+		return NewInternalError(err.Error())
 	}
 
 	if err = s.handleReferences(ctx, obj, referenceActionCheckExist); err != nil {
@@ -337,7 +354,7 @@ func (s *Store) handleReferences(ctx context.Context, obj cmdb.Object, action re
 		refOps...,
 	).Commit()
 	if err != nil {
-		return err
+		return NewInternalError(err.Error())
 	}
 	if !txnResp.Succeeded {
 		return NewReferencedNotExist(key, fmt.Sprintf("reference object does not exists, %v.", refs))
@@ -380,9 +397,6 @@ func (s *Store) checkExistReferenced(ctx context.Context, obj cmdb.Object) error
 // On success, objPtr would be set to the object.
 func decode(keyValue *mvccpb.KeyValue, objPtr *cmdb.Object) error {
 	var err error
-	if _, err = conversion.EnforcePtr(objPtr); err != nil {
-		return fmt.Errorf("unable to convert output object to pointer: %v", err)
-	}
 	obj, err := conversion.DecodeObject(keyValue.Value)
 	if err != nil {
 		return err

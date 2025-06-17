@@ -4,22 +4,37 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"goTool/global"
 	"goTool/pkg/cmdb"
 	"goTool/pkg/cmdb/conversion"
 	apiv1 "goTool/pkg/cmdb/server/apis/v1"
+	"goTool/pkg/cmdb/server/storage"
 	"io/fs"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func testServer() *httptest.Server {
-	r := chi.NewRouter()
-	apiv1.InstallApi(r)
+func testServer() (*httptest.Server, string) {
+	r := apiv1.NewRouter(nil)
+	ts := httptest.NewServer(r)
+	apiUrl := ts.URL + apiv1.PathPrefix
+	return ts, apiUrl
+}
+
+func testInvalidStoreServer() *httptest.Server {
+
+	client, _ := clientv3.New(clientv3.Config{
+		Endpoints: []string{"invalid-endpoint-url"},
+	})
+	store := storage.New(client, global.StoragePathPrefix)
+
+	r := apiv1.NewRouter(store)
+
 	return httptest.NewServer(r)
 }
 
@@ -65,10 +80,11 @@ func testCountResource(t *testing.T, apiUrl string, o cmdb.Object, namespace str
 	assert.LessOrEqual(t, 1, count, o.GetKind())
 }
 
-func testGetResourceNames(t *testing.T, o cmdb.Object, namespace string) {
-	names, err := DefaultCMDBClient.GetResourceNames(o, namespace)
-	assert.LessOrEqual(t, 1, len(names))
+func testGetResourceNames(t *testing.T, apiUrl string, o cmdb.Object, namespace string) {
+	cli := NewCMDBClient(apiUrl)
+	names, err := cli.GetResourceNames(o, namespace)
 	assert.NoError(t, err)
+	assert.LessOrEqual(t, 1, len(names), o.GetKind())
 }
 
 func testUpdateResource(t *testing.T, apiUrl string, o cmdb.Object, name, namespace, updatePath string, value any) {
@@ -131,10 +147,29 @@ func TestReadResourceWithBadAPIUrl(t *testing.T) {
 	assert.IsType(t, &url.Error{}, err)
 }
 
-func TestCreateValidateError(t *testing.T) {
-	ts := testServer()
+func TestHealth(t *testing.T) {
+	ts, apiUrl := testServer()
 	defer ts.Close()
+	cli := NewCMDBClient(apiUrl)
+
+	health := cli.Health()
+	assert.Equal(t, true, health)
+}
+
+func TestHealthInvaliStorage(t *testing.T) {
+	ts := testInvalidStoreServer()
+	defer ts.Close()
+
 	apiUrl := ts.URL + apiv1.PathPrefix
+	cli := NewCMDBClient(apiUrl)
+
+	health := cli.Health()
+	assert.Equal(t, false, health)
+}
+
+func TestCreateValidateError(t *testing.T) {
+	ts, apiUrl := testServer()
+	defer ts.Close()
 	cli := NewCMDBClient(apiUrl)
 
 	_, err := cli.CreateResource(cmdb.NewApp())
@@ -142,9 +177,8 @@ func TestCreateValidateError(t *testing.T) {
 }
 
 func TestCreateValidateServerError(t *testing.T) {
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	cli := NewCMDBClient(apiUrl)
 
 	s := cmdb.NewSecret()
@@ -155,9 +189,8 @@ func TestCreateValidateServerError(t *testing.T) {
 }
 
 func TestUpdateValidateError(t *testing.T) {
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	cli := NewCMDBClient(apiUrl)
 
 	_, err := cli.UpdateResource(cmdb.NewApp())
@@ -165,9 +198,8 @@ func TestUpdateValidateError(t *testing.T) {
 }
 
 func TestListInvalidateLabelSelector(t *testing.T) {
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	cli := NewCMDBClient(apiUrl)
 
 	objs, err := cli.ListResource(cmdb.NewApp(), &ListOptions{Selector: map[string]string{"x": "1", "y": "="}})
@@ -194,9 +226,8 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/orchestration.yaml",
 		"../example/files/appdeployment.yaml",
 	}
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	for i := range cases {
 		testCreateResource(t, apiUrl, cases[i])
 	}
@@ -226,16 +257,18 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewOrchestration(), "test", ""},
 		{cmdb.NewAppDeployment(), "go-app", "test"},
 	}
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	for i := range cases {
 		testReadResource(t, apiUrl, cases[i].o, cases[i].name, cases[i].namespace)
 	}
 }
 
 func TestReadResourceNoNamespace(t *testing.T) {
-	cli := CMDBClient{}
+	ts, apiUrl := testServer()
+	defer ts.Close()
+
+	cli := CMDBClient{ApiUrl: apiUrl}
 	app := cmdb.NewApp()
 	namspace := "not-exist-namespace"
 	app.Metadata.Namespace = namspace
@@ -267,9 +300,8 @@ func TestListResource(t *testing.T) {
 		{cmdb.NewOrchestration(), ""},
 		{cmdb.NewAppDeployment(), "test"},
 	}
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	for i := range cases {
 		testListResource(t, apiUrl, cases[i].o, cases[i].namespace)
 	}
@@ -299,9 +331,8 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewOrchestration(), ""},
 		{cmdb.NewAppDeployment(), "test"},
 	}
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	for i := range cases {
 		testCountResource(t, apiUrl, cases[i].o, cases[i].namespace)
 	}
@@ -331,8 +362,10 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewOrchestration(), ""},
 		{cmdb.NewAppDeployment(), "test"},
 	}
+	ts, apiUrl := testServer()
+	defer ts.Close()
 	for i := range cases {
-		testGetResourceNames(t, cases[i].o, cases[i].namespace)
+		testGetResourceNames(t, apiUrl, cases[i].o, cases[i].namespace)
 	}
 }
 
@@ -361,9 +394,8 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewOrchestration(), "test", "", "description", RandomString(6)},
 		{cmdb.NewAppDeployment(), "go-app", "test", "description", RandomString(6)},
 	}
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	for i := range cases {
 		testUpdateResource(
 			t, apiUrl,
@@ -401,9 +433,8 @@ func TestDeleteResource(t *testing.T) {
 		{cmdb.NewDatacenter(), "test", ""},
 		{cmdb.NewSecret(), "test", ""},
 	}
-	ts := testServer()
+	ts, apiUrl := testServer()
 	defer ts.Close()
-	apiUrl := ts.URL + apiv1.PathPrefix
 	for i := range cases {
 		testDeleteResource(t, apiUrl, cases[i].o, cases[i].name, cases[i].namespace)
 	}

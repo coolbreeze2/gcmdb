@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -49,6 +50,15 @@ func testSetup(clearDb bool) (context.Context, *Store, *clientv3.Client) {
 	if clearDb {
 		client.KV.Delete(ctx, "", clientv3.WithPrefix())
 	}
+	return ctx, store, client
+}
+
+func testInvalidSetup() (context.Context, *Store, *clientv3.Client) {
+	client, _ := clientv3.New(clientv3.Config{
+		Endpoints: []string{"invalid-endpoint-url"},
+	})
+	store := New(client, global.StoragePathPrefix)
+	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	return ctx, store, client
 }
 
@@ -183,6 +193,14 @@ func TestCreateOutNil(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCreateInvalidClient(t *testing.T) {
+	ctx, s, _ := testInvalidSetup()
+	obj, err := parseResourceFromFile(cases[0])
+	err = s.Create(ctx, obj, nil)
+	assert.Equal(t, IsInternalError(err), true)
+	assert.NotEqual(t, err.Error(), "")
+}
+
 func TestCreate(t *testing.T) {
 	ctx, s, _ := testSetup(true)
 	for i := range cases {
@@ -191,13 +209,10 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGetInvalidClient(t *testing.T) {
-	client, _ := clientv3.New(clientv3.Config{
-		Endpoints: []string{"invalid-endpoint-url"},
-	})
-	s := New(client, global.StoragePathPrefix)
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, s, _ := testInvalidSetup()
 	err := s.Get(ctx, "app", "", "", GetOptions{}, nil)
 	assert.Equal(t, IsInternalError(err), true)
+	assert.NotEqual(t, err.Error(), "")
 }
 
 func TestGetInvalidKind(t *testing.T) {
@@ -229,10 +244,43 @@ func TestGet(t *testing.T) {
 func TestCount(t *testing.T) {
 	TestCreate(t)
 	ctx, s, _ := testSetup(false)
-	ctx.Done()
 	cnt, err := s.Count(ctx, "app", "")
 	assert.NoError(t, err)
 	assert.Less(t, int64(0), cnt)
+}
+
+func TestCountInvalidClient(t *testing.T) {
+	ctx, s, _ := testInvalidSetup()
+	_, err := s.Count(ctx, "app", "")
+	assert.Equal(t, IsInternalError(err), true)
+	assert.NotEqual(t, err.Error(), "")
+}
+
+func TestGetNames(t *testing.T) {
+	TestCreate(t)
+	ctx, s, _ := testSetup(false)
+	names, err := s.GetNames(ctx, "app", "")
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 1, len(names))
+}
+
+func TestGetNamesInvalidClient(t *testing.T) {
+	ctx, s, _ := testInvalidSetup()
+	_, err := s.GetNames(ctx, "app", "")
+	assert.Equal(t, IsInternalError(err), true)
+	assert.NotEqual(t, err.Error(), "")
+}
+
+func TestGetListInvalidClient(t *testing.T) {
+	ctx, s, _ := testInvalidSetup()
+	var out []cmdb.Object
+	err := s.GetList(ctx, "app", "", ListOptions{All: true}, &out)
+	assert.Equal(t, IsInternalError(err), true)
+	assert.NotEqual(t, err.Error(), "")
+
+	err = s.GetList(ctx, "app", "", ListOptions{LabelSelector: map[string]string{"language": "python"}}, &out)
+	assert.Equal(t, IsInternalError(err), true)
+	assert.NotEqual(t, err.Error(), "")
 }
 
 func TestGetListAll(t *testing.T) {
@@ -375,6 +423,13 @@ func TestDelete(t *testing.T) {
 		// 倒序删除
 		testDelete(t, ctx, s, cases[len(cases)-i-1])
 	}
+}
+
+func TestDecode(t *testing.T) {
+	kv := &mvccpb.KeyValue{Value: []byte("kind: invalid-kind")}
+	var obj cmdb.Object
+	err := decode(kv, &obj)
+	assert.IsType(t, cmdb.ResourceTypeError{}, err)
 }
 
 // 生成随机字符串

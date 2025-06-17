@@ -15,6 +15,17 @@ import (
 	"github.com/imroc/req/v3"
 )
 
+func (c CMDBClient) Health() bool {
+	var err error
+	var resp *req.Response
+	url := UrlJoin(c.getCMDBAPIURL(), "/health")
+	resp, err = req.C().R().Get(url)
+	if err == nil && resp.StatusCode == 200 {
+		return true
+	}
+	return false
+}
+
 // 创建资源
 func (c CMDBClient) CreateResource(r cmdb.Object) (map[string]any, error) {
 	var err error

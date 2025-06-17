@@ -7,13 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
 func testServer() *httptest.Server {
-	r := chi.NewRouter()
-	InstallApi(r)
+	r := NewRouter(nil)
 	return httptest.NewServer(r)
 }
 

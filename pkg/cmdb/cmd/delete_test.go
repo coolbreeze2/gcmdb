@@ -27,6 +27,10 @@ func TestDeleteResource(t *testing.T) {
 		{"delete", "datacenter", "test"},
 		{"delete", "secret", "test"},
 	}
+
+	ts := testServer()
+	defer ts.Close()
+
 	for i := range cases {
 		RootCmd.SetArgs(cases[i])
 		err := RootCmd.Execute()

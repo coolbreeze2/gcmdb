@@ -38,7 +38,7 @@ func newDeleteCmd(r cmdb.Object) *cobra.Command {
 }
 
 func deleteCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
-	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
+	namespace := parseNamespace(c, r)
 	var name string
 
 	cli := client.DefaultCMDBClient

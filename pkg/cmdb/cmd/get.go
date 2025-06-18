@@ -66,7 +66,7 @@ func newGetCmd(r cmdb.Object) *cobra.Command {
 func getCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
 	outputFmt, _ := c.Flags().GetString("output")
 	revision, _ := c.Flags().GetInt64("revision")
-	opt := parseListOptionsFlags(c)
+	opt := parseListOptionsFlags(c, r)
 	var err error
 	var name string
 	var resources []map[string]any
@@ -101,8 +101,8 @@ func addGetFlags(c *cobra.Command) {
 	c.Flags().String("field-selector", "", "field selector")
 }
 
-func parseListOptionsFlags(c *cobra.Command) *client.ListOptions {
-	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
+func parseListOptionsFlags(c *cobra.Command, o cmdb.Object) *client.ListOptions {
+	namespace := parseNamespace(c, o)
 	page, _ := c.Flags().GetInt64("page")
 	limit, _ := c.Flags().GetInt64("limit")
 	selector, _ := c.Flags().GetString("selector")

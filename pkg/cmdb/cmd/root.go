@@ -27,6 +27,14 @@ func addPersistentFlags() {
 	RootCmd.PersistentFlags().StringP("namespace", "n", "", "resource namespace")
 }
 
+func parseNamespace(c *cobra.Command, o cmdb.Object) string {
+	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
+	if o.GetMeta().HasNamespace() && namespace == "" {
+		fatalErrHandler(fmt.Sprintf("error: a namespace must be specified for %s", o.GetKind()), 1)
+	}
+	return namespace
+}
+
 func init() {
 	addPersistentFlags()
 

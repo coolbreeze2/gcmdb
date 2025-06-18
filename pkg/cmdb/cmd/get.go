@@ -18,11 +18,21 @@ type customColumn struct {
 	name, path string
 }
 
+// 资源额外列
 var extraCustomColumn = map[string][]customColumn{
-	"app":        {customColumn{"PROJECT", "spec.project"}, customColumn{"SCM", "spec.scm.name"}},
-	"datacenter": {customColumn{"PROVIDER", "spec.provider"}},
-	"project":    {customColumn{"NAME_IN_CHAIN", "spec.nameInChain"}},
-	"scm":        {customColumn{"DATACENTER", "spec.datacenter"}, customColumn{"URL", "spec.url"}, customColumn{"SERVICE", "spec.service"}},
+	"app":               {{"PROJECT", "spec.project"}, {"SCM", "spec.scm.name"}},
+	"appdeployment":     {{"STATUS", "status"}, {"FLOW_RUN_ID", "flow_run_id"}, {"PROJECT", "spec.template.spec.project"}, {"APP", "spec.template.spec.app"}},
+	"datacenter":        {{"PROVIDER", "spec.provider"}},
+	"project":           {{"NAME_IN_CHAIN", "spec.nameInChain"}},
+	"scm":               {{"DATACENTER", "spec.datacenter"}, {"URL", "spec.url"}, {"SERVICE", "spec.service"}},
+	"containerregistry": {{"TYPE", "spec.type"}, {"DATACENTER", "spec.datacenter"}, {"REGISTRY", "spec.registry"}},
+	"zone":              {{"PROVIDER", "spec.provider"}},
+	"deployplatform":    {{"DATACENTER", "spec.datacenter"}},
+	"helmrepository":    {{"DATACENTER", "spec.datacenter"}, {"URL", "spec.url"}},
+	"hostnode":          {{"DATACENTER", "spec.datacenter"}, {"ZONE", "spec.zone"}, {"HOSTNAME", "spec.hostname"}, {"IP", "spec.ip"}, {"PHASE", "status.phase"}},
+	"namespace":         {{"ENV", "spec.bizEnv"}, {"UNIT", "spec.bizUnit"}, {"DATACENTER", "spec.datacenter"}},
+	"orchestration":     {{"PREFECT_DEPLOY", "spec.name"}},
+	"resourcerange":     {{"DEPLOY_TEMPLATE", "deployTemplate.name"}},
 }
 
 var getCmd = &cobra.Command{
@@ -132,7 +142,10 @@ func outputFmtSimple(resources []map[string]any, r cmdb.Object) {
 		row := []string{name}
 		if hasExCol {
 			for _, c := range extraColumns {
-				value := conversion.GetMapValueByPath(r, c.path).(string)
+				value, ok := conversion.GetMapValueByPath(r, c.path).(string)
+				if !ok {
+					value = ""
+				}
 				row = append(row, value)
 			}
 		}

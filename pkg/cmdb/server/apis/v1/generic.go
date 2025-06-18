@@ -2,10 +2,10 @@ package v1
 
 import (
 	"fmt"
-	"goTool/global"
-	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/conversion"
-	"goTool/pkg/cmdb/server/storage"
+	"gcmdb/global"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/conversion"
+	"gcmdb/pkg/cmdb/server/storage"
 	"net/http"
 	"path"
 	"strconv"

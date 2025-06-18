@@ -1,4 +1,4 @@
-module goTool
+module gcmdb
 
 go 1.24.0
 

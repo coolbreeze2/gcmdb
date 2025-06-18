@@ -3,7 +3,7 @@ package runtime
 import (
 	"encoding/base64"
 	"fmt"
-	"goTool/pkg/cmdb"
+	"gcmdb/pkg/cmdb"
 	"reflect"
 
 	"github.com/go-playground/validator/v10"

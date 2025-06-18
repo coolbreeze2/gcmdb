@@ -3,9 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/client"
-	"goTool/pkg/cmdb/conversion"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/client"
+	"gcmdb/pkg/cmdb/conversion"
 	"os"
 	"strings"
 

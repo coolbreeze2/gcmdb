@@ -2,10 +2,10 @@ package client
 
 import (
 	"fmt"
-	"goTool/global"
-	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/conversion"
-	"goTool/pkg/cmdb/runtime"
+	"gcmdb/global"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/conversion"
+	"gcmdb/pkg/cmdb/runtime"
 	"os"
 	"path"
 	"regexp"

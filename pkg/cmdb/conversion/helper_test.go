@@ -2,7 +2,7 @@ package conversion
 
 import (
 	"encoding/json"
-	"goTool/pkg/cmdb"
+	"gcmdb/pkg/cmdb"
 	"testing"
 
 	"github.com/goccy/go-yaml"

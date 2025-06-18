@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"goTool/pkg/cmdb/client"
-	apiv1 "goTool/pkg/cmdb/server/apis/v1"
+	"gcmdb/pkg/cmdb/client"
+	apiv1 "gcmdb/pkg/cmdb/server/apis/v1"
 	"net/http/httptest"
 	"testing"
 

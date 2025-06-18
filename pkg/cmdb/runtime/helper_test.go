@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"goTool/pkg/cmdb"
+	"gcmdb/pkg/cmdb"
 	"reflect"
 	"testing"
 

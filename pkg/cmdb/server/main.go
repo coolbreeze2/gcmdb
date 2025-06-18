@@ -1,7 +1,7 @@
 package main
 
 import (
-	apiv1 "goTool/pkg/cmdb/server/apis/v1"
+	apiv1 "gcmdb/pkg/cmdb/server/apis/v1"
 	"net/http"
 )
 

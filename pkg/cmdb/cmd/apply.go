@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"goTool/global"
-	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/client"
+	"gcmdb/global"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/client"
 	"os"
 	"sort"
 

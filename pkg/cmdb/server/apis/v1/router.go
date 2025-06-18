@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"goTool/pkg/cmdb/server/storage"
+	"gcmdb/pkg/cmdb/server/storage"
 	"time"
 
 	"github.com/go-chi/chi/v5"

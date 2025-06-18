@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"goTool/global"
-	"goTool/pkg/cmdb"
+	"gcmdb/global"
+	"gcmdb/pkg/cmdb"
 
 	"github.com/spf13/cobra"
 )

@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/client"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/client"
 	"strings"
 
 	"github.com/spf13/cobra"

@@ -1,7 +1,7 @@
 package global
 
 import (
-	"goTool/pkg/setting"
+	"gcmdb/pkg/setting"
 	"log"
 )
 

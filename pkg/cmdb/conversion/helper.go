@@ -3,7 +3,7 @@ package conversion
 import (
 	"encoding/json"
 	"fmt"
-	"goTool/pkg/cmdb"
+	"gcmdb/pkg/cmdb"
 	"strings"
 
 	"github.com/goccy/go-yaml"

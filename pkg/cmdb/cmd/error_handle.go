@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"goTool/pkg/cmdb"
+	"gcmdb/pkg/cmdb"
 	"os"
 	"strings"
 )

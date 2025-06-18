@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"goTool/pkg/cmdb"
-	"goTool/pkg/cmdb/client"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/client"
 	"slices"
 
 	"github.com/spf13/cobra"

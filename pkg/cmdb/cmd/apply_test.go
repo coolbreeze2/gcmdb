@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"goTool/global"
+	"gcmdb/global"
 	"os"
 	"testing"
 

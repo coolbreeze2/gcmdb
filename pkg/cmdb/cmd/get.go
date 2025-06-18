@@ -95,8 +95,8 @@ func getCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
 
 func addGetFlags(c *cobra.Command) {
 	c.Flags().BoolP("all-namespaces", "A", false, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
-	c.Flags().StringP("output", "o", "simple", "page number")
-	c.Flags().Int64P("page", "p", 0, "page number")
+	c.Flags().StringP("output", "o", "simple", "output format")
+	c.Flags().Int64P("page", "p", 1, "page number")
 	c.Flags().Int64P("limit", "s", 0, "limit size, 0 is no limit")
 	c.Flags().StringP("selector", "l", "", "label selector")
 	c.Flags().String("field-selector", "", "field selector")

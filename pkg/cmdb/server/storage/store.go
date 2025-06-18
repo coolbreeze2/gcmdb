@@ -119,7 +119,7 @@ func (s *Store) GetList(ctx context.Context, kind, namespace string, opts ListOp
 			minKVIndex = (opts.Page - 1) * opts.Limit
 		}
 		maxKVIndex := minKVIndex + opts.Limit + 1
-		if maxKVIndex >= count {
+		if opts.Limit == 0 || maxKVIndex >= count {
 			maxKVIndex = count - 1
 		}
 		if minKVIndex+1 > count {

@@ -6,6 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDeleteNoNamespaced(t *testing.T) {
+	RootCmd.SetArgs([]string{"delete", "deploytemplate", "docker-compose-test"})
+	assertOsExit(t, Execute, 1)
+}
+
 func TestDeleteResource(t *testing.T) {
 	// 倒序删除
 	cases := [][]string{

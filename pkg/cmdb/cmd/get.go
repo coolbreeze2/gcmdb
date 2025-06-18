@@ -8,6 +8,7 @@ import (
 	"gcmdb/pkg/cmdb/conversion"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/goccy/go-yaml"
 	"github.com/olekukonko/tablewriter"
@@ -106,7 +107,7 @@ func parseListOptionsFlags(c *cobra.Command, o cmdb.Object) *client.ListOptions 
 	all, _ := c.Flags().GetBool("all-namespaces")
 	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
 	if o.GetMeta().HasNamespace() && namespace == "" && all == false {
-		fatalErrHandler(fmt.Sprintf("error: a namespace must be specified for %s", o.GetKind()), 1)
+		CheckError(fmt.Errorf("error: a namespace must be specified for %s", o.GetKind()))
 	}
 	page, _ := c.Flags().GetInt64("page")
 	limit, _ := c.Flags().GetInt64("limit")
@@ -136,7 +137,7 @@ func outputFmtSimple(resources []map[string]any, r cmdb.Object, all bool) {
 			tableHeader = append(tableHeader, c.name)
 		}
 	}
-	tableHeader = append(tableHeader, "CREATED_AT")
+	tableHeader = append(tableHeader, "AGE")
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(tableHeader)
@@ -147,7 +148,7 @@ func outputFmtSimple(resources []map[string]any, r cmdb.Object, all bool) {
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	for _, r := range resources {
 		metadataField := r["metadata"].(map[string]any)
-		createTime := metadataField["creationTimestamp"].(string)
+		createTime := formatAge(metadataField["creationTimestamp"].(string))
 		name := metadataField["name"].(string)
 		row := []string{name}
 		if addNamespaceCol {
@@ -181,4 +182,62 @@ func outputFmtYaml(resources []map[string]any) {
 	}
 	result := strings.Join(s, "---\n")
 	fmt.Printf("%v", result)
+}
+
+func formatAge(t string) string {
+	layout := "2006-01-02T15:04:05.9999999-07:00"
+	time_, _ := time.Parse(layout, t)
+	now := time.Now()
+	duration := now.Sub(time_)
+	return HumanDuration(duration)
+}
+
+// HumanDuration returns a succint representation of the provided duration
+// with limited precision for consumption by humans. It provides ~2-3 significant
+// figures of duration.
+func HumanDuration(d time.Duration) string {
+	// Allow deviation no more than 2 seconds(excluded) to tolerate machine time
+	// inconsistence, it can be considered as almost now.
+	if seconds := int(d.Seconds()); seconds < -1 {
+		return "<invalid>"
+	} else if seconds < 0 {
+		return "0s"
+	} else if seconds < 60*2 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+	minutes := int(d / time.Minute)
+	if minutes < 10 {
+		s := int(d/time.Second) % 60
+		if s == 0 {
+			return fmt.Sprintf("%dm", minutes)
+		}
+		return fmt.Sprintf("%dm%ds", minutes, s)
+	} else if minutes < 60*3 {
+		return fmt.Sprintf("%dm", minutes)
+	}
+	hours := int(d / time.Hour)
+	if hours < 8 {
+		m := int(d/time.Minute) % 60
+		if m == 0 {
+			return fmt.Sprintf("%dh", hours)
+		}
+		return fmt.Sprintf("%dh%dm", hours, m)
+	} else if hours < 48 {
+		return fmt.Sprintf("%dh", hours)
+	} else if hours < 24*8 {
+		h := hours % 24
+		if h == 0 {
+			return fmt.Sprintf("%dd", hours/24)
+		}
+		return fmt.Sprintf("%dd%dh", hours/24, h)
+	} else if hours < 24*365*2 {
+		return fmt.Sprintf("%dd", hours/24)
+	} else if hours < 24*365*8 {
+		dy := int(hours/24) % 365
+		if dy == 0 {
+			return fmt.Sprintf("%dy", hours/24/365)
+		}
+		return fmt.Sprintf("%dy%dd", hours/24/365, dy)
+	}
+	return fmt.Sprintf("%dy", int(hours/24/365))
 }

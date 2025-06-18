@@ -89,11 +89,12 @@ func getCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
 	case "yaml":
 		outputFmtYaml(resources)
 	default:
-		outputFmtSimple(resources, r)
+		outputFmtSimple(resources, r, opt.All)
 	}
 }
 
 func addGetFlags(c *cobra.Command) {
+	c.Flags().BoolP("all-namespaces", "A", false, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
 	c.Flags().StringP("output", "o", "simple", "page number")
 	c.Flags().Int64P("page", "p", 0, "page number")
 	c.Flags().Int64P("limit", "s", 0, "limit size, 0 is no limit")
@@ -102,12 +103,17 @@ func addGetFlags(c *cobra.Command) {
 }
 
 func parseListOptionsFlags(c *cobra.Command, o cmdb.Object) *client.ListOptions {
-	namespace := parseNamespace(c, o)
+	all, _ := c.Flags().GetBool("all-namespaces")
+	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
+	if o.GetMeta().HasNamespace() && namespace == "" && all == false {
+		fatalErrHandler(fmt.Sprintf("error: a namespace must be specified for %s", o.GetKind()), 1)
+	}
 	page, _ := c.Flags().GetInt64("page")
 	limit, _ := c.Flags().GetInt64("limit")
 	selector, _ := c.Flags().GetString("selector")
 	field_selector, _ := c.Flags().GetString("field_selector")
 	return &client.ListOptions{
+		All:           all,
 		Namespace:     namespace,
 		Page:          page,
 		Limit:         limit,
@@ -116,11 +122,15 @@ func parseListOptionsFlags(c *cobra.Command, o cmdb.Object) *client.ListOptions 
 	}
 }
 
-func outputFmtSimple(resources []map[string]any, r cmdb.Object) {
+func outputFmtSimple(resources []map[string]any, r cmdb.Object, all bool) {
 	tableHeader := []string{"NAME"}
 
 	// 不同 Resource 支持自定义 Column
 	extraColumns, hasExCol := extraCustomColumn[strings.ToLower(r.GetKind())]
+	addNamespaceCol := r.GetMeta().HasNamespace() && all
+	if addNamespaceCol {
+		tableHeader = append(tableHeader, "NAMESPACE")
+	}
 	if hasExCol {
 		for _, c := range extraColumns {
 			tableHeader = append(tableHeader, c.name)
@@ -140,6 +150,9 @@ func outputFmtSimple(resources []map[string]any, r cmdb.Object) {
 		createTime := metadataField["creationTimestamp"].(string)
 		name := metadataField["name"].(string)
 		row := []string{name}
+		if addNamespaceCol {
+			row = append(row, metadataField["namespace"].(string))
+		}
 		if hasExCol {
 			for _, c := range extraColumns {
 				value, ok := conversion.GetMapValueByPath(r, c.path).(string)

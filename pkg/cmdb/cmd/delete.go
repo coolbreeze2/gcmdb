@@ -38,7 +38,10 @@ func newDeleteCmd(r cmdb.Object) *cobra.Command {
 }
 
 func deleteCmdHandle(c *cobra.Command, r cmdb.Object, args []string) {
-	namespace := parseNamespace(c, r)
+	namespace, _ := c.Root().PersistentFlags().GetString("namespace")
+	if r.GetMeta().HasNamespace() && namespace == "" {
+		fatalErrHandler(fmt.Sprintf("error: a namespace must be specified for %s", r.GetKind()), 1)
+	}
 	var name string
 
 	cli := client.DefaultCMDBClient

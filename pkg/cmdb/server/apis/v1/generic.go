@@ -45,9 +45,9 @@ func addGenericApi(r *chi.Mux, kind string) {
 	namespacedPath := fmt.Sprintf("%s/%ss/%s", PathPrefix, kind, "{namespace}")
 
 	if namespaced {
-		// 兼容旧 api
 		r.Route(basePath, func(r chi.Router) {
 			r.Post("/", createFunc(kind))
+			r.Get("/", getListFunc(kind))
 		})
 	}
 

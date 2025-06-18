@@ -98,6 +98,7 @@ func (c CMDBClient) ListResource(r cmdb.Object, opt *ListOptions) ([]map[string]
 	url := c.getListResourceUrl(r, opt.Namespace)
 
 	query := map[string]string{
+		"all":            strconv.FormatBool(opt.All),
 		"page":           strconv.FormatInt(opt.Page, 10),
 		"limit":          strconv.FormatInt(opt.Limit, 10),
 		"selector":       conversion.EncodeSelector(opt.Selector),

@@ -11,6 +11,7 @@ type CMDBClient struct {
 }
 
 type ListOptions struct {
+	All           bool              `json:"all"`
 	Namespace     string            `json:"namespace"`
 	Page          int64             `json:"page"`
 	Limit         int64             `json:"limit"`

@@ -35,7 +35,7 @@ func (c CMDBClient) CreateResource(r cmdb.Object) (map[string]any, error) {
 	c.fmtError(r, resp, conversion.StructToMap(r, &resource))
 
 	url := c.getCreateResourceUrl(r)
-	removeResourceManageFields(resource)
+	RemoveResourceManageFields(resource)
 
 	if err = runtime.ValidateObject(r); err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (c CMDBClient) UpdateResource(r cmdb.Object) (map[string]any, error) {
 	c.fmtError(r, resp, conversion.StructToMap(r, &resource))
 
 	url := c.getURDResourceUrl(r, meta.Name, meta.Namespace)
-	removeResourceManageFields(resource)
+	RemoveResourceManageFields(resource)
 
 	if err = runtime.ValidateObject(r); err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func LowerKind(r cmdb.Object) string {
 }
 
 // 移除系统管理字段
-func removeResourceManageFields(r map[string]any) {
+func RemoveResourceManageFields(r map[string]any) {
 	fields := []string{"create_revision", "creationTimestamp", "managedFields", "revision", "version"}
 	metadata := r["metadata"].(map[string]any)
 	for index := range fields {
@@ -221,22 +221,24 @@ func removeResourceManageFields(r map[string]any) {
 	}
 }
 
-func ParseResourceFromDir(dirPath string) ([]cmdb.Object, error) {
+func ParseResourceFromDir(dirPath string) ([]cmdb.Object, []string, error) {
 	var err error
 	var objs []cmdb.Object
 	var entries []os.DirEntry
+	var filePaths []string
 	if entries, err = os.ReadDir(dirPath); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, e := range entries {
 		filePath := path.Join(dirPath, e.Name())
 		var obj cmdb.Object
 		if obj, err = ParseResourceFromFile(filePath); err != nil {
-			return nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
+			return nil, nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
 		}
 		objs = append(objs, obj)
+		filePaths = append(filePaths, filePath)
 	}
-	return objs, nil
+	return objs, filePaths, nil
 }
 
 func ParseResourceFromFile(filePath string) (cmdb.Object, error) {

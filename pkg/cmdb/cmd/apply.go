@@ -32,7 +32,7 @@ func applyCmdHandle(c *cobra.Command) {
 	info, err := os.Stat(filePath)
 	CheckError(err)
 	if info.IsDir() {
-		resources, err = client.ParseResourceFromDir(filePath)
+		resources, _, err = client.ParseResourceFromDir(filePath)
 	} else {
 		var resource cmdb.Object
 		resource, err = client.ParseResourceFromFile(filePath)

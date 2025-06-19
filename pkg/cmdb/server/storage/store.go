@@ -174,8 +174,9 @@ func (s *Store) Create(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 		return fmt.Errorf("resourceVersion should not be set on objects to be created")
 	}
 
-	meta.CreationTimeStamp = time.Now()
-	meta.ManagedFields.Time = time.Now()
+	now := time.Now()
+	meta.CreationTimeStamp = &now
+	meta.ManagedFields.Time = &now
 	defaults.SetDefaults(obj)
 	data, err := json.Marshal(obj)
 	if err != nil {
@@ -250,7 +251,8 @@ func (s *Store) Update(ctx context.Context, obj cmdb.Object, out *cmdb.Object) e
 		}
 
 		// 更新此次变更的时间
-		meta.ManagedFields.Time = time.Now()
+		now := time.Now()
+		meta.ManagedFields.Time = &now
 
 		if err = s.handleReferences(ctx, obj, referenceActionCheckExist); err != nil {
 			return err

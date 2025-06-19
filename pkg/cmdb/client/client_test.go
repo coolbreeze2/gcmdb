@@ -132,7 +132,7 @@ func testDeleteResource(t *testing.T, apiUrl string, o cmdb.Object, name, namesp
 }
 
 func TestParseResourceFromDirNotExist(t *testing.T) {
-	_, err := ParseResourceFromDir("a-not-exist-dir")
+	_, _, err := ParseResourceFromDir("a-not-exist-dir")
 	assert.IsType(t, &fs.PathError{}, err)
 }
 

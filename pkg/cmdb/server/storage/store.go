@@ -101,7 +101,8 @@ func (s *Store) GetList(ctx context.Context, kind, namespace string, opts ListOp
 		opts.Limit = 0
 	}
 	var minCreateRevision, maxCreateRevision int64
-	if len(opts.LabelSelector) == 0 && len(opts.FieldSelector) == 0 {
+	isPaginate := opts.Limit != 0 && len(opts.LabelSelector) == 0 && len(opts.FieldSelector) == 0
+	if isPaginate {
 		rangeLimit := opts.Page * opts.Limit
 		ops := []clientv3.OpOption{
 			clientv3.WithLimit(rangeLimit),
@@ -131,10 +132,15 @@ func (s *Store) GetList(ctx context.Context, kind, namespace string, opts ListOp
 		maxCreateRevision = maxKV.CreateRevision
 	}
 	ops := []clientv3.OpOption{
-		clientv3.WithMinCreateRev(minCreateRevision),
-		clientv3.WithMaxCreateRev(maxCreateRevision),
 		clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortAscend),
 		clientv3.WithPrefix(),
+	}
+	if isPaginate {
+		ops = append(ops, []clientv3.OpOption{
+			clientv3.WithMinCreateRev(minCreateRevision),
+			clientv3.WithMaxCreateRev(maxCreateRevision),
+		}...,
+		)
 	}
 	kvResp, err := s.client.KV.Get(ctx, key, ops...)
 	if err != nil {

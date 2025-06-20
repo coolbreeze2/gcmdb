@@ -252,9 +252,14 @@ func ParseResourceFromDir(dirPath string) ([]cmdb.Object, []string, error) {
 func ParseResourceFromFile(filePath string) (cmdb.Object, error) {
 	var file []byte
 	var err error
+	var obj cmdb.Object
 	if file, err = os.ReadFile(filePath); err != nil {
 		return nil, err
 	}
 
-	return conversion.DecodeObject(file)
+	if obj, err = conversion.DecodeObject(file); err != nil {
+		return nil, err
+	}
+	err = runtime.ValidateObject(obj)
+	return obj, err
 }

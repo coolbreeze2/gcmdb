@@ -134,7 +134,9 @@ func NewApp() *App {
 
 func NewResourceRange() *ResourceRange {
 	return &ResourceRange{
-		ResourceBase: *NewResourceBase("ResourceRange", true),
+		ResourceBase:   *NewResourceBase("ResourceRange", true),
+		Spec:           ResourceRangeSpec{Env: make(map[string]string), NodeSelector: make(map[string]string)},
+		DeployTemplate: ResourceRangeDeployTemplate{DeployArgs: make(map[string]string)},
 	}
 }
 
@@ -147,6 +149,14 @@ func NewOrchestration() *Orchestration {
 func NewAppDeployment() *AppDeployment {
 	return &AppDeployment{
 		ResourceBase: *NewResourceBase("AppDeployment", true),
+		Spec: AppDeploymentSpec{
+			Template: AppDeploymentSpecTemplate{
+				Spec: ResourceRangeSpec{
+					Env:          make(map[string]string),
+					NodeSelector: make(map[string]string),
+				},
+			},
+		},
 	}
 }
 
@@ -441,7 +451,7 @@ func (r *DeployPlatform) GetMeta() *ObjectMeta {
 
 type DeployTemplateSpec struct {
 	Command    []string `json:"command" validate:"required"`
-	DeployArgs string   `json:"deployArgs" validate:"required"`
+	DeployArgs string   `json:"deployArgs"`
 }
 
 type DeployTemplate struct {
@@ -477,8 +487,8 @@ func (r *Project) GetMeta() *ObjectMeta {
 
 type AppSCM struct {
 	Name    string `json:"name" validate:"required,dns_rfc1035_label" reference:"SCM"`
-	Project string `json:"project" validate:"required"`
-	User    string `json:"user" validate:"required"`
+	Project string `json:"project"`
+	User    string `json:"user"`
 }
 
 type AppSpec struct {
@@ -500,10 +510,10 @@ func (r *App) GetMeta() *ObjectMeta {
 }
 
 type AppDepConfigCenterApollo struct {
-	AppId   string `json:"appId"`
-	Cluster string `json:"cluster"`
-	Env     string `json:"env"`
-	Name    string `json:"name" validete:"omitempty,dns_rfc1035_label" reference:"ConfigCenter"`
+	AppId   string `json:"appId,omitempty"`
+	Cluster string `json:"cluster,omitempty"`
+	Env     string `json:"env,omitempty"`
+	Name    string `json:"name,omitempty" validete:"omitempty,dns_rfc1035_label" reference:"ConfigCenter"`
 }
 
 type AppDepConfigCenter struct {
@@ -511,7 +521,7 @@ type AppDepConfigCenter struct {
 }
 
 type AppDepServiceDiscoveryEureka struct {
-	Application string `json:"application"`
+	Application string `json:"application,omitempty"`
 }
 
 type AppDepServiceDiscovery struct {
@@ -519,8 +529,8 @@ type AppDepServiceDiscovery struct {
 }
 
 type ApplicationDependence struct {
-	ConfigCenter     AppDepConfigCenter     `json:"configCenter"`
-	ServiceDiscovery AppDepServiceDiscovery `json:"serviceDiscovery"`
+	ConfigCenter     *AppDepConfigCenter     `json:"configCenter,omitempty"`
+	ServiceDiscovery *AppDepServiceDiscovery `json:"serviceDiscovery,omitempty"`
 }
 
 type DPHelm struct {
@@ -531,9 +541,9 @@ type DPHelm struct {
 }
 
 type DPKubernetes struct {
-	Name              string               `json:"name" validate:"omitempty,dns_rfc1035_label" reference:"DeployPlatform"`
+	Name              string               `json:"name,omitempty" validate:"omitempty,dns_rfc1035_label" reference:"DeployPlatform"`
 	ContainerRegistry *DPContainerRegistry `json:"containerRegistry"`
-	Namespace         string               `json:"namespace" validate:"omitempty,dns_rfc1035_label"`
+	Namespace         string               `json:"namespace,omitempty" validate:"omitempty,dns_rfc1035_label"`
 	Helm              *DPHelm              `json:"helm"`
 }
 
@@ -556,19 +566,19 @@ type ResourceRangeDeployPlatform struct {
 
 type ResourceRangeDeployTemplate struct {
 	Name       string            `json:"name" validate:"omitempty,dns_rfc1035_label" reference:"DeployTemplate"`
-	DeployArgs map[string]string `json:"deployArgs"`
+	DeployArgs map[string]string `json:"deployArgs,omitempty"`
 	Values     map[string]any    `json:"values"`
 }
 
 type MonitoringMetrics struct {
-	Path    string `json:"path"`
-	Port    string `json:"port"`
+	Path    string `json:"path,omitempty"`
+	Port    string `json:"port,omitempty"`
 	Scraped bool   `json:"scraped"`
 }
 
 type MonitoringProbeHttpGet struct {
-	Path string `json:"path"`
-	Port string `json:"port"`
+	Path string `json:"path,omitempty"`
+	Port string `json:"port,omitempty"`
 }
 
 type MonitoringProbe struct {
@@ -576,42 +586,42 @@ type MonitoringProbe struct {
 }
 
 type ResourceRangeMonitoring struct {
-	Metrics MonitoringMetrics `json:"metrics"`
-	Probe   MonitoringProbe   `json:"probe"`
+	Metrics *MonitoringMetrics `json:"metrics"`
+	Probe   *MonitoringProbe   `json:"probe"`
 }
 
 type ResourceLimit struct {
-	Cpu    string `json:"cpu"`
-	Memory string `json:"memory"`
+	Cpu    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
 }
 
 type ResourceRangeResources struct {
-	Limit   ResourceLimit `json:"limit"`
-	Request ResourceLimit `json:"request"`
+	Limit   *ResourceLimit `json:"limit"`
+	Request *ResourceLimit `json:"request"`
 }
 
 type ServicePort struct {
-	Port     int    `json:"port"`
-	Protocol string `json:"protocol"`
+	Port     int    `json:"port,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
 }
 
 type ResourceRangePorts struct {
-	Http    ServicePort `json:"http"`
-	Metrics ServicePort `json:"metrics"`
+	Http    *ServicePort `json:"http"`
+	Metrics *ServicePort `json:"metrics"`
 }
 
 type ResourceRangeSpec struct {
-	App                   string                      `json:"app" validate:"omitempty,dns_rfc1035_label" reference:"App"`
-	ApplicationDependence ApplicationDependence       `json:"applicationDependence"`
-	Args                  []string                    `json:"args"`
-	Env                   map[string]string           `json:"env"`
-	Command               []string                    `json:"command"`
-	DeployPlatform        ResourceRangeDeployPlatform `json:"deployPlatform"`
-	Monitoring            ResourceRangeMonitoring     `json:"monitoring"`
-	NodeSelector          map[string]string           `json:"nodeSelector"`
-	Project               string                      `json:"project" validate:"omitempty,dns_rfc1035_label" reference:"Project"`
-	Resources             ResourceRangeResources      `json:"resources"`
-	Ports                 *ResourceRangePorts         `json:"ports,omitempty"`
+	App                   string                       `json:"app,omitempty" validate:"omitempty,dns_rfc1035_label" reference:"App"`
+	ApplicationDependence *ApplicationDependence       `json:"applicationDependence,omitempty"`
+	Args                  []string                     `json:"args,omitempty"`
+	Env                   map[string]string            `json:"env,omitempty"`
+	Command               []string                     `json:"command,omitempty"`
+	DeployPlatform        *ResourceRangeDeployPlatform `json:"deployPlatform,omitempty"`
+	Monitoring            *ResourceRangeMonitoring     `json:"monitoring,omitempty"`
+	NodeSelector          map[string]string            `json:"nodeSelector"`
+	Project               string                       `json:"project,omitempty" validate:"omitempty,dns_rfc1035_label" reference:"Project"`
+	Resources             *ResourceRangeResources      `json:"resources,omitempty"`
+	Ports                 *ResourceRangePorts          `json:"ports,omitempty"`
 }
 
 type ResourceRange struct {

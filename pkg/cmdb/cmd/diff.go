@@ -60,10 +60,14 @@ func diffResource(o cmdb.Object, filePath string) error {
 	meta := o.GetMeta()
 	cli := client.DefaultCMDBClient
 	serverObj, err := cli.ReadResource(o, meta.Name, meta.Namespace, 0)
-	CheckError(err)
+	switch err.(type) {
+	case cmdb.ResourceNotFoundError:
+	default:
+		CheckError(err)
+	}
 	client.RemoveResourceManageFields(serverObj)
 
-	var oMap map[string]any
+	oMap := map[string]any{}
 	CheckError(conversion.StructToMap(o, &oMap))
 	client.RemoveResourceManageFields(oMap)
 
@@ -72,11 +76,13 @@ func diffResource(o cmdb.Object, filePath string) error {
 	diff := difflib.UnifiedDiff{
 		A:        difflib.SplitLines(string(serverObjBytes)),
 		B:        difflib.SplitLines(string(ObjBytes)),
-		FromFile: "Server",
+		FromFile: "server",
 		ToFile:   filePath,
 		Context:  3,
 	}
 	text, _ := difflib.GetUnifiedDiffString(diff)
-	fmt.Println(text)
+	if text != "" {
+		fmt.Println(text)
+	}
 	return nil
 }

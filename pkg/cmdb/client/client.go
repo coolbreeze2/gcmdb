@@ -7,7 +7,7 @@ import (
 	"gcmdb/pkg/cmdb/conversion"
 	"gcmdb/pkg/cmdb/runtime"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -207,6 +207,9 @@ func LowerKind(r cmdb.Object) string {
 
 // 移除系统管理字段
 func RemoveResourceManageFields(r map[string]any) {
+	if r == nil {
+		return
+	}
 	fields := []string{"create_revision", "creationTimestamp", "managedFields", "revision", "version"}
 	metadata := r["metadata"].(map[string]any)
 	for index := range fields {
@@ -224,19 +227,24 @@ func RemoveResourceManageFields(r map[string]any) {
 func ParseResourceFromDir(dirPath string) ([]cmdb.Object, []string, error) {
 	var err error
 	var objs []cmdb.Object
-	var entries []os.DirEntry
 	var filePaths []string
-	if entries, err = os.ReadDir(dirPath); err != nil {
-		return nil, nil, err
-	}
-	for _, e := range entries {
-		filePath := path.Join(dirPath, e.Name())
-		var obj cmdb.Object
-		if obj, err = ParseResourceFromFile(filePath); err != nil {
-			return nil, nil, fmt.Errorf("%swhen parse file %s", err.Error(), filePath)
+
+	err = filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
-		objs = append(objs, obj)
-		filePaths = append(filePaths, filePath)
+		if !info.IsDir() {
+			var obj cmdb.Object
+			if obj, err = ParseResourceFromFile(path); err != nil {
+				return fmt.Errorf("%s\nwhen parse file %s", err.Error(), path)
+			}
+			objs = append(objs, obj)
+			filePaths = append(filePaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
 	}
 	return objs, filePaths, nil
 }

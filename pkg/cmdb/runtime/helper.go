@@ -1,32 +1,10 @@
 package runtime
 
 import (
-	"encoding/base64"
 	"fmt"
-	"gcmdb/pkg/cmdb"
 	"reflect"
-
-	"github.com/go-playground/validator/v10"
+	"strings"
 )
-
-// 字段校验
-func ValidateObject(r cmdb.Object) error {
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	validate.RegisterValidation("base64map", base64MapValidation)
-	return validate.Struct(r)
-}
-
-// map value 必须为 base64 encoding 的 string
-func base64MapValidation(fl validator.FieldLevel) bool {
-	val := fl.Field().Interface().(map[string]string)
-	for _, value := range val {
-		if _, err := base64.StdEncoding.DecodeString(value); err != nil {
-			return false
-		}
-	}
-
-	return true
-}
 
 // 递归遍历结构体所有字段
 func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValuePair {
@@ -40,7 +18,7 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 		return result
 	}
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		fieldVal := v.Field(i)
 		fieldType := t.Field(i)
 
@@ -50,9 +28,13 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 		}
 
 		// 构造字段的路径
-		fieldPath := path + "." + fieldType.Name
+		fieldTypeName := fieldType.Name
+		if fieldType.Tag.Get("json") != "" {
+			fieldTypeName = strings.Split(fieldType.Tag.Get("json"), ",")[0]
+		}
+		fieldPath := path + "." + fieldTypeName
 		if path == "" {
-			fieldPath = fieldType.Name
+			fieldPath = fieldTypeName
 		}
 
 		// 获取标签
@@ -61,7 +43,7 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 			switch fieldValue := fieldVal.Interface().(type) {
 			case string:
 				if fieldValue != "" {
-					result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue})
+					result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue, FieldPath: fieldPath})
 				}
 			}
 		}
@@ -84,7 +66,7 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 					switch fieldValue := item.Interface().(type) {
 					case string:
 						if fieldValue != "" {
-							result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue})
+							result = append(result, TagValuePair{TagValue: tagValue, FieldValue: fieldValue, FieldPath: fieldPath})
 						}
 					}
 				}
@@ -103,4 +85,98 @@ func GetFieldValueByTag(v reflect.Value, path string, tagName string) []TagValue
 		uniqResult = append(uniqResult, vp)
 	}
 	return uniqResult
+}
+
+func RecSetItem(obj map[string]any, path string, value any) {
+	parts := strings.SplitN(path, ".", 2)
+	if len(parts) == 1 {
+		// 路径只有一级，直接赋值
+		obj[parts[0]] = value
+	} else {
+		// 路径有多级，递归设置
+		key := parts[0]
+		rest := parts[1]
+
+		// 确保对应key值是map[string]any，如果不存在则新建空map
+		var nextMap map[string]any
+		if v, ok := obj[key]; ok {
+			nextMap, ok = v.(map[string]any)
+			if !ok {
+				// 如果类型不是map，覆盖为新的map
+				nextMap = make(map[string]any)
+				obj[key] = nextMap
+			}
+		} else {
+			nextMap = make(map[string]any)
+			obj[key] = nextMap
+		}
+
+		RecSetItem(nextMap, rest, value)
+	}
+}
+
+// DeepCopyMap 递归地对 map[string]any 做深拷贝
+func DeepCopyMap(src map[string]any) map[string]any {
+	if src == nil {
+		return nil
+	}
+	dst := make(map[string]any, len(src))
+	for k, v := range src {
+		dst[k] = deepCopyValue(v)
+	}
+	return dst
+}
+
+// 辅助函数，递归复制各种可能的类型
+func deepCopyValue(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		return DeepCopyMap(v)
+	case []any:
+		newSlice := make([]any, len(v))
+		for i, elem := range v {
+			newSlice[i] = deepCopyValue(elem)
+		}
+		return newSlice
+	default:
+		// 基础类型，直接返回（因为它们是值类型）
+		return v
+	}
+}
+
+func Merge2Dict(current, target map[string]any, path []string) map[string]any {
+	if path == nil {
+		path = []string{}
+	}
+
+	for key, targetVal := range target {
+		if currentVal, exists := current[key]; exists {
+			// 如果两个都是 map[string]any，递归合并
+			currentMap, okCur := currentVal.(map[string]any)
+			targetMap, okTar := targetVal.(map[string]any)
+			if okCur && okTar {
+				Merge2Dict(currentMap, targetMap, append(path, key))
+			} else if currentVal == nil && isAllowedType(targetVal) {
+				// 如果 current[key] 是 nil 并且 target[key] 是允许类型，则替换
+				current[key] = targetVal
+			} else if !reflect.DeepEqual(currentVal, targetVal) {
+				// 值不同且 current[key] 不为空，跳过冲突处理
+				// 如果需要，可以在这里抛错或打印冲突信息
+				// fmt.Printf("Conflict at %s\n", strings.Join(append(path, key), "."))
+			}
+		} else {
+			// current中不存在该key，直接赋值
+			current[key] = targetVal
+		}
+	}
+	return current
+}
+
+// 判定 target 的值是否是允许替换 current nil 的类型
+func isAllowedType(v any) bool {
+	switch v.(type) {
+	case map[string]any, []any, string, int, int64, float32, float64:
+		return true
+	}
+	return false
 }

@@ -129,8 +129,27 @@ func (c CMDBClient) GetResourceNames(r cmdb.Object, namespace string) ([]string,
 	url := c.getResourceNamesUrl(r)
 	query := map[string]string{"namespace": namespace}
 	resp, err := req.C().R().SetQueryParams(query).SetSuccessResult(&names).Get(url)
-
 	return names, c.fmtError(r, resp, err)
+}
+
+// TODO: 获取渲染后的AppDeployment
+func (c CMDBClient) RenderAppDeployment(name, namespace string, params map[string]any) (map[string]any, error) {
+	path := fmt.Sprintf("/appdeployments/%s/%s/render", namespace, name)
+	var result map[string]any
+	url := c.getCMDBAPIURL() + path
+	data := map[string]any{"params": map[string]any{}}
+	resp, err := req.C().R().SetBody(data).SetSuccessResult(&result).SetErrorResult(&result).Post(url)
+	return result, c.fmtError(&cmdb.AppDeployment{}, resp, err)
+}
+
+// TODO: 获取渲染后的 AppDeployment 关联的 DeployTemplate
+func (c CMDBClient) RenderDeployTemplate(name, namespace string, params map[string]any) (map[string]any, error) {
+	path := fmt.Sprintf("/appdeployments/%s/%s/deploytemplate/render", namespace, name)
+	var result map[string]any
+	url := c.getCMDBAPIURL() + path
+	data := map[string]any{"params": map[string]any{}}
+	resp, err := req.C().R().SetBody(data).SetSuccessResult(&result).SetErrorResult(&result).Post(url)
+	return result, c.fmtError(&cmdb.DeployTemplate{}, resp, err)
 }
 
 // 格式化错误信息

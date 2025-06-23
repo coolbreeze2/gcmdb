@@ -18,13 +18,13 @@ import (
 
 const PathPrefix = "/api/v1"
 
-var store *storage.Store
+var db *storage.Store
 
 func InstallApi(r *chi.Mux, s *storage.Store) {
 	if s == nil {
-		store = newStorage()
+		db = newStorage()
 	} else {
-		store = s
+		db = s
 	}
 
 	r.Get(path.Join(PathPrefix, "health"), healthFunc())
@@ -32,6 +32,8 @@ func InstallApi(r *chi.Mux, s *storage.Store) {
 	for _, kind := range global.ResourceOrder {
 		addGenericApi(r, kind)
 	}
+
+	addAppRenderApi(r)
 }
 
 func addGenericApi(r *chi.Mux, kind string) {
@@ -70,7 +72,7 @@ func addGenericApi(r *chi.Mux, kind string) {
 
 func healthFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if store.Health(r.Context()) {
+		if db.Health(r.Context()) {
 			render.Status(r, http.StatusOK)
 			render.Respond(w, r, "health")
 		}
@@ -87,7 +89,7 @@ func getFunc(kind string) http.HandlerFunc {
 		opts := storage.GetOptions{ResourceVersion: revision}
 
 		var out cmdb.Object
-		if err := store.Get(r.Context(), kind, name, namespace, opts, &out); err != nil {
+		if err := db.Get(r.Context(), kind, name, namespace, opts, &out); err != nil {
 			handleStorageErr(w, r, err)
 			return
 		}
@@ -100,7 +102,7 @@ func countFunc(kind string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		namespace := r.URL.Query().Get("namespace")
 
-		cnt, err := store.Count(r.Context(), kind, namespace)
+		cnt, err := db.Count(r.Context(), kind, namespace)
 		if err != nil {
 			handleStorageErr(w, r, err)
 			return
@@ -114,7 +116,7 @@ func getNamesFunc(kind string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		namespace := r.URL.Query().Get("namespace")
 
-		names, err := store.GetNames(r.Context(), kind, namespace)
+		names, err := db.GetNames(r.Context(), kind, namespace)
 		if err != nil {
 			handleStorageErr(w, r, err)
 			return
@@ -139,7 +141,7 @@ func getListFunc(kind string) http.HandlerFunc {
 		}
 
 		var out = []cmdb.Object{}
-		if err := store.GetList(r.Context(), kind, namespace, opts, &out); err != nil {
+		if err := db.GetList(r.Context(), kind, namespace, opts, &out); err != nil {
 			handleStorageErr(w, r, err)
 			return
 		}
@@ -160,7 +162,7 @@ func createFunc(kind string) http.HandlerFunc {
 			return
 		}
 		var out cmdb.Object
-		if err := store.Create(r.Context(), data, &out); err != nil {
+		if err := db.Create(r.Context(), data, &out); err != nil {
 			handleStorageErr(w, r, err)
 			return
 		}
@@ -181,7 +183,7 @@ func updateFunc(kind string) http.HandlerFunc {
 			return
 		}
 		var out cmdb.Object
-		if err := store.Update(r.Context(), data, &out); err != nil {
+		if err := db.Update(r.Context(), data, &out); err != nil {
 			handleStorageErr(w, r, err)
 			return
 		}
@@ -200,7 +202,7 @@ func deleteFunc(kind string) http.HandlerFunc {
 		name := chi.URLParam(r, "name")
 		namespace := chi.URLParam(r, "namespace")
 
-		if err := store.Delete(r.Context(), kind, name, namespace); err != nil {
+		if err := db.Delete(r.Context(), kind, name, namespace); err != nil {
 			handleStorageErr(w, r, err)
 			return
 		}

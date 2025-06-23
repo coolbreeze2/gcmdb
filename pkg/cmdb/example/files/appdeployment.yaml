@@ -28,7 +28,7 @@ spec:
             application: go-app
       args:
       - autoapp.py
-      - ${ spec.env.EMPTY_ARG }
+      - ${ spec.env.ENV }
       command:
       - python
       env:

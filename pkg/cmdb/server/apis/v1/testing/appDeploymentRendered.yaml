@@ -1,0 +1,139 @@
+apiVersion: v1alpha
+kind: AppDeployment
+metadata:
+  name: go-app
+  namespace: test
+  create_revision: 81894
+  revision: 81894
+  version: 1
+  managedFields:
+    manager: cmctl
+    operation: Updated
+    time: 2025-06-23T10:33:13.6261484+08:00
+  creationTimestamp: 2025-06-23T10:33:13.6261484+08:00
+  labels: {}
+  annotations: {}
+spec:
+  orchestration: test
+  resourceRange: test
+  template:
+    metadata:
+      labels:
+        app: go-app
+        end_type: back
+        project: go-devops
+    spec:
+      app: go-app
+      applicationDependence:
+        configCenter:
+          apollo:
+            appId: go-app
+            cluster: test
+            env: FAT
+            name: apollo-test
+        serviceDiscovery:
+          eureka:
+            application: go-app
+      args:
+      - autoapp.py
+      - test
+      env:
+        EMPTY_ARG: ""
+        ENV: test
+        GC_LOG: -Xloggc:/mnt/logs/go-app/go-app-gc-$DATETIME.log
+        JAVA_OPTS: ""
+        PORT: "8000"
+        PRE_START_SLEEP_TIME: "0"
+        PRE_STOP_SLEEP_TIME: "0"
+        STARTUP_TIME: "10"
+        ZONE: A
+      command:
+      - python
+      deployPlatform:
+        docker:
+          containerRegistry:
+            name: harbor-test
+            project: go-devops
+          kubernetesAgent:
+            name: test
+            containerRegistry:
+              name: harbor-test
+              project: devops
+            namespace: prefect
+            helm:
+              name: test
+              release: go-app-deploy
+              chart: common-ansible-playbook
+              chartVersion: 1.0.0
+      monitoring:
+        metrics:
+          path: metrics
+          port: "1234"
+          scraped: false
+        probe:
+          httpGet:
+            path: actuator/health
+            port: "8000"
+      nodeSelector:
+        app: go-app
+        namespace: test
+        project: go-devops
+      project: go-devops
+      resources:
+        limit:
+          cpu: "1"
+          memory: 2G
+        request:
+          cpu: "0.2"
+          memory: 1G
+    deployTemplate:
+      name: docker-compose-test
+      values:
+        app: go-app
+        app_down_secret: down-secret
+        args:
+        - autoapp.py
+        - test
+        command:
+        - python
+        container_name: go-app_test
+        docker_password: cmVhZG9ubHk6cmVhZG9ubHkxMjMK
+        docker_username: readonly
+        env:
+          EMPTY_ARG: ""
+          ENV: test
+          GC_LOG: -Xloggc:/mnt/logs/go-app/go-app-gc-$DATETIME.log
+          JAVA_OPTS: ""
+          PORT: "8000"
+          PRE_START_SLEEP_TIME: "0"
+          PRE_STOP_SLEEP_TIME: "0"
+          STARTUP_TIME: "10"
+          ZONE: A
+        eureka_url: http://eureka-url:8761
+        health_path: actuator/health
+        healthcheck:
+          interval: 5s
+          retries: 10
+          start_period: 10s
+          test:
+          - CMD
+          - curl
+          - -f
+          - http://localhost:8000/actuator/health
+          timeout: 1s
+        image: harbor.dev.com/go-devops/go-app:ali-test
+        image_registry: harbor.dev.com
+        jenkins_build:
+          job_name: business-apps-external/go-devops/go-app
+          parameters:
+            BRANCH: origin/release/test
+            DEPLOY_ENV: ali-test
+            VERSION: null
+        minio_url: http://minio-data.dev.com
+        port: 8000
+        user: root
+        volumes:
+        - /mnt/jars:/opt/java-packages
+        - /mnt/logs:/mnt/logs
+        - /etc/localtime:/etc/localtime:ro
+flow_run_id: ""

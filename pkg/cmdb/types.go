@@ -161,8 +161,8 @@ func NewAppDeployment() *AppDeployment {
 }
 
 type ManagedFields struct {
-	Manager   string     `json:"manager,omitempty" default:"cmctl"`
-	Operation string     `json:"operation,omitempty" default:"Updated"`
+	Manager   string     `json:"manager" default:"cmctl"`
+	Operation string     `json:"operation" default:"Updated"`
 	Time      *time.Time `json:"time,omitempty"`
 }
 
@@ -172,7 +172,7 @@ type ObjectMeta struct {
 	CreateRevision    int64             `json:"create_revision,omitempty"`
 	Revision          int64             `json:"revision,omitempty"`
 	Version           int64             `json:"version,omitempty"`
-	ManagedFields     *ManagedFields    `json:"managedFields,omitempty"`
+	ManagedFields     ManagedFields     `json:"managedFields"`
 	CreationTimeStamp *time.Time        `json:"creationTimestamp,omitempty"`
 	Labels            map[string]string `json:"labels"`
 	Annotations       map[string]string `json:"annotations"`
@@ -186,7 +186,7 @@ func (m *ObjectMeta) HasNamespace() bool {
 func NewResourceMeta(namespaced bool) *ObjectMeta {
 	return &ObjectMeta{
 		Namespace:     "",
-		ManagedFields: &ManagedFields{},
+		ManagedFields: ManagedFields{},
 		Labels:        make(map[string]string),
 		Annotations:   make(map[string]string),
 		namespaced:    namespaced,

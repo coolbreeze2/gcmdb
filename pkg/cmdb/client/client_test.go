@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -438,4 +439,34 @@ func TestDeleteResource(t *testing.T) {
 	for i := range cases {
 		testDeleteResource(t, apiUrl, cases[i].o, cases[i].name, cases[i].namespace)
 	}
+}
+
+func TestRenderAppDeployment(t *testing.T) {
+	TestCreateResource(t)
+	ts, apiUrl := testServer()
+	defer ts.Close()
+
+	namespace := "test"
+	name := "go-app"
+	params := map[string]any{}
+	cli := NewCMDBClient(apiUrl)
+	result, err := cli.RenderAppDeployment(name, namespace, params)
+	assert.NoError(t, err)
+	out, _ := yaml.MarshalWithOptions(result, yaml.AutoInt(), yaml.UseLiteralStyleIfMultiline(true))
+	fmt.Println(string(out))
+}
+
+func TestRenderDeployTemplate(t *testing.T) {
+	TestCreateResource(t)
+	ts, apiUrl := testServer()
+	defer ts.Close()
+
+	namespace := "test"
+	name := "go-app"
+	params := map[string]any{}
+	cli := NewCMDBClient(apiUrl)
+	result, err := cli.RenderDeployTemplate(name, namespace, params)
+	assert.NoError(t, err)
+	out, _ := yaml.MarshalWithOptions(result, yaml.AutoInt(), yaml.UseLiteralStyleIfMultiline(true))
+	fmt.Println(string(out))
 }

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"gcmdb/pkg/cmdb/client"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,9 @@ import (
 
 func testServer() *httptest.Server {
 	r := NewRouter(nil)
+	ts := httptest.NewServer(r)
+	apiUrl := ts.URL + PathPrefix
+	client.DefaultCMDBClient.ApiUrl = apiUrl
 	return httptest.NewServer(r)
 }
 

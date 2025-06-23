@@ -19,7 +19,7 @@ func TestGetFieldValueByTag(t *testing.T) {
 	app := &cmdb.Datacenter{Spec: cmdb.DatacenterSpec{PrivateKey: "test"}}
 	v := reflect.ValueOf(app)
 	result := GetFieldValueByTag(v, "", "reference")
-	assert.Equal(t, []TagValuePair{{"Secret", "test"}}, result)
+	assert.Equal(t, []TagValuePair{{"Secret", "test", "spec.privateKey"}}, result)
 }
 
 func TestGetFieldValueByTagMap(t *testing.T) {
@@ -32,10 +32,327 @@ func TestGetFieldValueByTagMap(t *testing.T) {
 func TestGetFieldValueByTagList(t *testing.T) {
 	type Case struct {
 		Field1 []string `reference:"Secret"`
-		Field2 []string `reference:"Secret"`
+		Field2 []string `reference:"Datacenter"`
 	}
 	c := Case{Field1: []string{"v1", "v1", "v2"}, Field2: []string{"v1", "v1", "v2"}}
 	v := reflect.ValueOf(c)
 	result := GetFieldValueByTag(v, "", "reference")
-	assert.Equal(t, []TagValuePair{{"Secret", "v1"}, {"Secret", "v2"}}, result)
+	assert.Equal(
+		t,
+		[]TagValuePair{
+			{"Secret", "v1", "Field1"},
+			{"Secret", "v2", "Field1"},
+			{"Datacenter", "v1", "Field2"},
+			{"Datacenter", "v2", "Field2"},
+		},
+		result,
+	)
+}
+
+func TestRecSetItem_SingleLevel(t *testing.T) {
+	obj := make(map[string]any)
+	RecSetItem(obj, "foo", 123)
+	want := map[string]any{"foo": 123}
+	if !reflect.DeepEqual(obj, want) {
+		t.Errorf("got %v, want %v", obj, want)
+	}
+}
+
+func TestRecSetItem_MultiLevel_NewPath(t *testing.T) {
+	obj := make(map[string]any)
+	RecSetItem(obj, "foo.bar", "baz")
+	want := map[string]any{
+		"foo": map[string]any{
+			"bar": "baz",
+		},
+	}
+	if !reflect.DeepEqual(obj, want) {
+		t.Errorf("got %v, want %v", obj, want)
+	}
+}
+
+func TestRecSetItem_MultiLevel_ExistingMap(t *testing.T) {
+	obj := map[string]any{
+		"foo": map[string]any{
+			"old": 1,
+		},
+	}
+	RecSetItem(obj, "foo.bar", 2)
+	want := map[string]any{
+		"foo": map[string]any{
+			"old": 1,
+			"bar": 2,
+		},
+	}
+	if !reflect.DeepEqual(obj, want) {
+		t.Errorf("got %v, want %v", obj, want)
+	}
+}
+
+func TestRecSetItem_OverwriteNonMap(t *testing.T) {
+	obj := map[string]any{
+		"foo": 123,
+	}
+	RecSetItem(obj, "foo.bar", "baz")
+	want := map[string]any{
+		"foo": map[string]any{
+			"bar": "baz",
+		},
+	}
+	if !reflect.DeepEqual(obj, want) {
+		t.Errorf("got %v, want %v", obj, want)
+	}
+}
+
+func TestRecSetItem_DeeplyNested(t *testing.T) {
+	obj := make(map[string]any)
+	RecSetItem(obj, "a.b.c.d", 42)
+	want := map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
+				"c": map[string]any{
+					"d": 42,
+				},
+			},
+		},
+	}
+	if !reflect.DeepEqual(obj, want) {
+		t.Errorf("got %v, want %v", obj, want)
+	}
+}
+
+func TestRecSetItem_EmptyPath(t *testing.T) {
+	obj := make(map[string]any)
+	RecSetItem(obj, "", "val")
+	want := map[string]any{
+		"": "val",
+	}
+	if !reflect.DeepEqual(obj, want) {
+		t.Errorf("got %v, want %v", obj, want)
+	}
+}
+func TestDeepCopyMap_NilInput(t *testing.T) {
+	var src map[string]any
+	got := DeepCopyMap(src)
+	if got != nil {
+		t.Errorf("expected nil, got %v", got)
+	}
+}
+
+func TestDeepCopyMap_EmptyMap(t *testing.T) {
+	src := map[string]any{}
+	got := DeepCopyMap(src)
+	if got == nil || len(got) != 0 {
+		t.Errorf("expected empty map, got %v", got)
+	}
+	if &src == &got {
+		t.Errorf("expected different map instances")
+	}
+}
+
+func TestDeepCopyMap_SimpleTypes(t *testing.T) {
+	src := map[string]any{
+		"a": 1,
+		"b": "str",
+		"c": true,
+	}
+	got := DeepCopyMap(src)
+	if !reflect.DeepEqual(src, got) {
+		t.Errorf("expected %v, got %v", src, got)
+	}
+	got["a"] = 2
+	if src["a"] == got["a"] {
+		t.Errorf("modifying copy should not affect original")
+	}
+}
+
+func TestDeepCopyMap_NestedMap(t *testing.T) {
+	src := map[string]any{
+		"outer": map[string]any{
+			"inner": 42,
+		},
+	}
+	got := DeepCopyMap(src)
+	if !reflect.DeepEqual(src, got) {
+		t.Errorf("expected %v, got %v", src, got)
+	}
+	// Modify copy, check original not affected
+	got["outer"].(map[string]any)["inner"] = 100
+	if src["outer"].(map[string]any)["inner"] == 100 {
+		t.Errorf("deep copy failed: original modified")
+	}
+}
+
+func TestDeepCopyMap_SliceOfMaps(t *testing.T) {
+	src := map[string]any{
+		"list": []any{
+			map[string]any{"x": 1},
+			map[string]any{"y": 2},
+		},
+	}
+	got := DeepCopyMap(src)
+	if !reflect.DeepEqual(src, got) {
+		t.Errorf("expected %v, got %v", src, got)
+	}
+	// Modify copy, check original not affected
+	gotList := got["list"].([]any)
+	gotList[0].(map[string]any)["x"] = 99
+	if src["list"].([]any)[0].(map[string]any)["x"] == 99 {
+		t.Errorf("deep copy failed: original modified")
+	}
+}
+
+func TestDeepCopyMap_ComplexNested(t *testing.T) {
+	src := map[string]any{
+		"a": map[string]any{
+			"b": []any{
+				map[string]any{"c": 1},
+				2,
+			},
+		},
+	}
+	got := DeepCopyMap(src)
+	if !reflect.DeepEqual(src, got) {
+		t.Errorf("expected %v, got %v", src, got)
+	}
+	// Modify copy, check original not affected
+	got["a"].(map[string]any)["b"].([]any)[0].(map[string]any)["c"] = 999
+	if src["a"].(map[string]any)["b"].([]any)[0].(map[string]any)["c"] == 999 {
+		t.Errorf("deep copy failed: original modified")
+	}
+}
+func TestMerge2Dict_BothEmpty(t *testing.T) {
+	current := map[string]any{}
+	target := map[string]any{}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_TargetAddsKeys(t *testing.T) {
+	current := map[string]any{"a": 1}
+	target := map[string]any{"b": 2}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{"a": 1, "b": 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_OverwriteNilWithAllowedType(t *testing.T) {
+	current := map[string]any{"a": nil}
+	target := map[string]any{"a": 123}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{"a": 123}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_ConflictNotOverwritten(t *testing.T) {
+	current := map[string]any{"a": 1}
+	target := map[string]any{"a": 2}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{"a": 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_RecursiveMerge(t *testing.T) {
+	current := map[string]any{
+		"outer": map[string]any{
+			"x": 1,
+		},
+	}
+	target := map[string]any{
+		"outer": map[string]any{
+			"y": 2,
+		},
+	}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{
+		"outer": map[string]any{
+			"x": 1,
+			"y": 2,
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_RecursiveConflict(t *testing.T) {
+	current := map[string]any{
+		"outer": map[string]any{
+			"x": 1,
+		},
+	}
+	target := map[string]any{
+		"outer": map[string]any{
+			"x": 2,
+		},
+	}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{
+		"outer": map[string]any{
+			"x": 1,
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_NilCurrentMap(t *testing.T) {
+	var current map[string]any
+	target := map[string]any{"a": 1}
+	// Should not panic, but current is nil so cannot merge in place
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic when current is nil")
+		}
+	}()
+	Merge2Dict(current, target, nil)
+}
+
+func TestMerge2Dict_SliceAllowedType(t *testing.T) {
+	current := map[string]any{"a": nil}
+	target := map[string]any{"a": []any{1, 2}}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{"a": []any{1, 2}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestMerge2Dict_DeepNested(t *testing.T) {
+	current := map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
+				"x": 1,
+			},
+		},
+	}
+	target := map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
+				"y": 2,
+			},
+		},
+	}
+	got := Merge2Dict(current, target, nil)
+	want := map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
+				"x": 1,
+				"y": 2,
+			},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
+	}
 }

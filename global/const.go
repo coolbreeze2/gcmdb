@@ -19,7 +19,7 @@ var ResourceOrder = [...]string{
 	"ResourceRange",
 	"Orchestration",
 	"AppDeployment",
-	// "AppInstance",
+	"AppInstance",
 	// "AppInstanceRun",
 	// "VirtualNetwork",
 	// "Subnet",

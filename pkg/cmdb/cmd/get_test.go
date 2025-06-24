@@ -47,6 +47,7 @@ func TestGetResource(t *testing.T) {
 		{"resourcerange", "test", "-n", "test"},
 		{"orchestration", "test"},
 		{"appdeployment", "go-app", "-n", "test"},
+		{"appinstance", "go-app--test--eh6hw", "-n", "test"},
 	}
 
 	cases := [][]string{

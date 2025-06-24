@@ -15,6 +15,7 @@ func TestDeleteResource(t *testing.T) {
 	// 倒序删除
 	cases := [][]string{
 		{"apply", "-f", "../example/files"},
+		{"delete", "appinstance", "go-app--test--eh6hw", "-n", "test"},
 		{"delete", "appdeployment", "go-app", "-n", "test"},
 		{"delete", "orchestration", "test"},
 		{"delete", "resourcerange", "test", "-n", "test"},

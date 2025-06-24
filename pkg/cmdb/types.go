@@ -48,6 +48,8 @@ func NewResourceWithKind(kind string) (Object, error) {
 		o = NewOrchestration()
 	case "appdeployment":
 		o = NewAppDeployment()
+	case "appinstance":
+		o = NewAppInstance()
 	default:
 		return nil, ResourceTypeError{Kind: kind}
 	}
@@ -157,6 +159,13 @@ func NewAppDeployment() *AppDeployment {
 				},
 			},
 		},
+	}
+}
+
+func NewAppInstance() *AppInstance {
+	return &AppInstance{
+		ResourceBase: *NewResourceBase("AppInstance", true),
+		Spec:         ResourceRangeSpec{Env: make(map[string]string), NodeSelector: make(map[string]string)},
 	}
 }
 
@@ -672,11 +681,23 @@ type AppDeploymentSpec struct {
 	Template      AppDeploymentSpecTemplate `json:"template" validate:"required"`
 }
 
+type AppDeploymentStuatus string
+
+const (
+	AppDeploymentUnknown      AppDeploymentStuatus = "unknown"
+	AppDeploymentNoneDeployed AppDeploymentStuatus = "none-deployed"
+	AppDeploymentDeploying    AppDeploymentStuatus = "deploying"
+	AppDeploymentDeployed     AppDeploymentStuatus = "deployed"
+	AppDeploymentUninstalling AppDeploymentStuatus = "uninstalling"
+	AppDeploymentUninstalled  AppDeploymentStuatus = "uninstalled"
+	AppDeploymentFailed       AppDeploymentStuatus = "failed"
+)
+
 type AppDeployment struct {
 	ResourceBase `json:",inline"`
-	Spec         AppDeploymentSpec `json:"spec" validate:"required"`
-	FlowRunId    string            `json:"flow_run_id" validate:"omitempty,uuid4"`
-	Status       string            `json:"status,omitempty"`
+	Spec         AppDeploymentSpec    `json:"spec" validate:"required"`
+	FlowRunId    string               `json:"flow_run_id" validate:"omitempty,uuid4"`
+	Status       AppDeploymentStuatus `json:"status,omitempty" default:"none-deployed"`
 }
 
 func (r AppDeployment) GetKind() string {
@@ -684,5 +705,43 @@ func (r AppDeployment) GetKind() string {
 }
 
 func (r *AppDeployment) GetMeta() *ObjectMeta {
+	return &r.Metadata
+}
+
+type AppInstanceDeployTemplate struct {
+	ResourceRangeDeployTemplate `json:",inline"`
+	Data                        map[string]string `json:"data"`
+}
+
+type FlowRunStatus string
+
+const (
+	FlowRunPending    FlowRunStatus = "pending"
+	FlowRunRunning    FlowRunStatus = "running"
+	FlowRunCompleted  FlowRunStatus = "completed"
+	FlowRunFailed     FlowRunStatus = "failed"
+	FlowRunCancelled  FlowRunStatus = "cancelled"
+	FlowRunCrashed    FlowRunStatus = "crashed"
+	FlowRunPaused     FlowRunStatus = "paused"
+	FlowRunCancelling FlowRunStatus = "cancelling"
+)
+
+type AppInstanceStatus struct {
+	FlowRunStatus FlowRunStatus `json:"flowRunStatus" default:"pending"`
+}
+
+type AppInstance struct {
+	ResourceBase   `json:",inline"`
+	Spec           ResourceRangeSpec         `json:"spec" validate:"required"`
+	Status         AppInstanceStatus         `json:"status,omitempty"`
+	DeployTemplate AppInstanceDeployTemplate `json:"deployTemplate"`
+	FlowRunId      string                    `json:"flow_run_id" validate:"omitempty,uuid4"`
+}
+
+func (r AppInstance) GetKind() string {
+	return r.Kind
+}
+
+func (r *AppInstance) GetMeta() *ObjectMeta {
 	return &r.Metadata
 }

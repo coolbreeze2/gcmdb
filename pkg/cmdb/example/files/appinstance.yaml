@@ -1,0 +1,169 @@
+apiVersion: v1alpha
+deployTemplate:
+  data:
+    values.yml: "containerCommand:\n- \"/bin/sh\"\n- \"-c\"\n- \"ansible-playbook\
+      \ --diff -v --ssh-common-args='-o StrictHostKeyChecking=no' -i /opt/ansible/host.ini\
+      \ /opt/ansible/playbook.yaml\"\nimage:\n  registry: harbor.dev.com\n \
+      \ repository: devops/ansible\n  tag: 2.13.2-bullseye\npodLabels:\n  app.cmdb/instance:\
+      \ go-app--test--eh6hw\nextraVolumeMounts:\n- name: localtime\n  mountPath:\
+      \ /etc/localtime\n- name: id-rsa\n  mountPath: /root/.ssh/id_rsa\n  subPath:\
+      \ id_rsa\n- name: data\n  mountPath: /opt/ansible/playbook.yaml\n  subPath:\
+      \ playbook.yaml\n- name: data\n  mountPath: /opt/ansible/host.ini\n  subPath:\
+      \ host.ini\n- name: data\n  mountPath: /opt/ansible/docker-compose.yml\n  subPath:\
+      \ docker-compose.yml\n- name: data\n  mountPath: /opt/ansible/systemd.service\n\
+      \  subPath: systemd.service\n- name: data\n  mountPath: /opt/ansible/prestop.sh\n\
+      \  subPath: prestop.sh\nvolumesConfigMapItems:\n- key: playbook.yaml\n  path:\
+      \ playbook.yaml\n- key: host.ini\n  path: host.ini\n- key: docker-compose.yml\n\
+      \  path: docker-compose.yml\n- key: systemd.service\n  path: systemd.service\n\
+      - key: prestop.sh\n  path: prestop.sh\nconfigMapData:\n  playbook.yaml: |\n\
+      \    - name: deploy docker app\n      hosts: all\n      vars:\n        ansible_python_interpreter:\
+      \ /usr/bin/python3.6\n      tasks:\n      - name: upload template file\n   \
+      \     copy:\n          src: '{{ item.src }}/'\n          dest: '{{ item.dest\
+      \ }}'\n          mode: '{{ item.mode }}'\n        loop:\n        - src: /opt/ansible/docker-compose.yml\n\
+      \          dest: /opt/biz-app/go-app/docker-compose.yml\n          mode: '0644'\n\
+      \        - src: /opt/ansible/prestop.sh\n          dest: /opt/biz-app/go-app/prestop.sh\n\
+      \          mode: '0744'\n        - src: /opt/ansible/systemd.service\n     \
+      \     dest: /usr/lib/systemd/system/go-app.service\n          mode: '0644'\n\
+      \      - name: pip install docker\n        pip:\n          name:\n         \
+      \ - requests\n          - docker\n          - docker-compose<2.0.0\n       \
+      \   executable: /usr/bin/pip3.6\n      - name: start application\n        systemd:\n\
+      \          state: restarted\n          daemon_reload: true\n          name:\
+      \ 'go-app'\n      - name: wait until health\n        uri:\n          url: 'http://localhost:8000/actuator/health'\n\
+      \          return_content: yes\n          validate_certs: no\n          status_code:\n\
+      \          - 200\n        until: uri_output.status == 200\n        retries:\
+      \ 12\n        delay: 5 # Every 5 seconds\n        register: uri_output\n   \
+      \   - name: docker image prune\n        community.docker.docker_prune:\n   \
+      \       images: true\n          containers_filters:\n            until: 720h\n\
+      \  host.ini: |\n    [all]\n    test ansible_host=10.10.204.37\n  docker-compose.yml:\
+      \ |\n    services:\n      biz-app:\n        container_name: go-app_test\n \
+      \       entrypoint:\n          - python\n        command:\n          - autoapp.py\n\
+      \        environment:\n          ENV: test\n          JAVA_OPTS: ''\n      \
+      \    PORT: '8000'\n          STARTUP_TIME: '10'\n          ZONE: A\n       \
+      \ healthcheck:\n          interval: 5s\n          retries: 10\n          start_period:\
+      \ 10s\n          test:\n            - CMD\n            - curl\n            -\
+      \ -f\n            - http://localhost:8000/actuator/health\n          timeout:\
+      \ 1s\n        image: harbor.dev.com/devops/go-app:ali-test\n        init:\
+      \ true\n        network_mode: host\n        pull_policy: always\n        restart:\
+      \ always\n        stdin_open: true\n        tty: true\n        user: root\n\
+      \        volumes:\n          - /mnt/jars:/opt/java-packages\n          - /mnt/logs:/mnt/logs\n\
+      \          - /etc/localtime:/etc/localtime:ro\n  systemd.service: |\n    [Unit]\n\
+      \    Description=JAVA business app\n    After=docker.service\n\n    [Service]\n\
+      \    Type=simple\n    Environment=CONTAINER_NAME=go-app_test\n    Environment=CONTAINER_PORT=8000\n\
+      \    WorkingDirectory=/opt/biz-app/go-app\n    ExecStart=/usr/local/bin/docker-compose\
+      \ up\n    ExecStop=/opt/biz-app/go-app/prestop.sh\n    ExecStop=/usr/local/bin/docker-compose\
+      \ stop\n\n    [Install]\n    WantedBy=multi-user.target\n  prestop.sh: |\n \
+      \   #!/bin/bash\n    set -x\n    APP_DOWN_SECRET=dev\n\n    for i in $(seq\
+      \ 1 5); do\n        res=\"$(curl -s -o /dev/null -w '%{http_code}' -m 10 http://127.0.0.1:8000/eurekaGray/prepareDown?downSecret=$APP_DOWN_SECRET)\"\
+      \n        [[ \"$res\" == \"000\" ]] && echo '连接拒绝' && break\n        [[ \"$res\"\
+      \ == \"true\" ]] && break || echo \"返回异常: $res\"\n        sleep 3\n    done\n"
+  deployArgs: {}
+  name: docker-compose-test
+  values:
+    app: go-app
+    args:
+    - autoapp.py
+    command:
+    - python
+    container_name: go-app_test
+    env:
+      ENV: test
+      JAVA_OPTS: ''
+      PORT: '8000'
+      STARTUP_TIME: '10'
+      ZONE: A
+    health_path: actuator/health
+    healthcheck:
+      interval: 5s
+      retries: 10
+      start_period: 10s
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8000/actuator/health
+      timeout: 1s
+    host_ip: None
+    hostname: null
+    image: harbor.dev.com/devops/go-app:ali-test
+    image_registry: harbor.dev.com
+    port: 8000
+    user: root
+    volumes:
+    - /mnt/jars:/opt/java-packages
+    - /mnt/logs:/mnt/logs
+    - /etc/localtime:/etc/localtime:ro
+description: ''
+flow_run_id: 7e899ecb-747b-41f3-b1bd-1c0b4f693fc9
+kind: AppInstance
+metadata:
+  annotations: {}
+  labels:
+    app: go-app
+    appDeployment: test
+    end_type: back
+    project: go-devops
+  name: go-app--test--eh6hw
+  namespace: test
+spec:
+  app: go-app
+  applicationDependence:
+    configCenter:
+      apollo:
+        appId: go-app
+        cluster: test
+        env: FAT
+        name: apollo-test
+    serviceDiscovery:
+      eureka:
+        application: go-app
+  args:
+  - autoapp.py
+  command:
+  - python
+  deployPlatform:
+    docker:
+      containerRegistry:
+        name: harbor-test
+        project: devops
+      kubernetesAgent:
+        containerRegistry:
+          name: harbor-test
+          project: devops
+        helm:
+          chart: common-ansible-playbook
+          chartVersion: 1.0.0
+          name: test
+          release: go-app-deploy
+        name: test
+        namespace: prefect
+      nodeIP: 10.10.204.37
+      nodeName: test
+  env:
+    ENV: test
+    JAVA_OPTS: ''
+    PORT: '8000'
+    STARTUP_TIME: '10'
+    ZONE: A
+  monitoring:
+    metrics:
+      path: metrics
+      port: '1234'
+      scraped: false
+    probe:
+      httpGet:
+        path: actuator/health
+        port: '8000'
+  nodeSelector:
+    app: go-app
+    namespace: test
+    project: go-devops
+  project: go-devops
+  resources:
+    limit:
+      cpu: '1.0'
+      memory: 2G
+    request:
+      cpu: '0.2'
+      memory: 1G
+status:
+  flowRunStatus: failed

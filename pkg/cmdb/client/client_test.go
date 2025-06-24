@@ -248,6 +248,7 @@ func TestCreateResource(t *testing.T) {
 		"../example/files/resource_range.yaml",
 		"../example/files/orchestration.yaml",
 		"../example/files/appdeployment.yaml",
+		"../example/files/appinstance.yaml",
 	}
 	ts, apiUrl := testServer()
 	defer ts.Close()
@@ -279,6 +280,7 @@ func TestReadResource(t *testing.T) {
 		{cmdb.NewResourceRange(), "test", "test"},
 		{cmdb.NewOrchestration(), "test", ""},
 		{cmdb.NewAppDeployment(), "go-app", "test"},
+		{cmdb.NewAppInstance(), "go-app--test--eh6hw", "test"},
 	}
 	ts, apiUrl := testServer()
 	defer ts.Close()
@@ -322,6 +324,7 @@ func TestListResource(t *testing.T) {
 		{cmdb.NewResourceRange(), "test"},
 		{cmdb.NewOrchestration(), ""},
 		{cmdb.NewAppDeployment(), "test"},
+		{cmdb.NewAppInstance(), "test"},
 	}
 	ts, apiUrl := testServer()
 	defer ts.Close()
@@ -353,6 +356,7 @@ func TestCountResource(t *testing.T) {
 		{cmdb.NewResourceRange(), "test"},
 		{cmdb.NewOrchestration(), ""},
 		{cmdb.NewAppDeployment(), "test"},
+		{cmdb.NewAppInstance(), "test"},
 	}
 	ts, apiUrl := testServer()
 	defer ts.Close()
@@ -384,6 +388,7 @@ func TestGetResourceNames(t *testing.T) {
 		{cmdb.NewResourceRange(), "test"},
 		{cmdb.NewOrchestration(), ""},
 		{cmdb.NewAppDeployment(), "test"},
+		{cmdb.NewAppInstance(), "test"},
 	}
 	ts, apiUrl := testServer()
 	defer ts.Close()
@@ -416,6 +421,7 @@ func TestUpdateResource(t *testing.T) {
 		{cmdb.NewResourceRange(), "test", "test", "description", RandomString(6)},
 		{cmdb.NewOrchestration(), "test", "", "description", RandomString(6)},
 		{cmdb.NewAppDeployment(), "go-app", "test", "description", RandomString(6)},
+		{cmdb.NewAppInstance(), "go-app--test--eh6hw", "test", "description", RandomString(6)},
 	}
 	ts, apiUrl := testServer()
 	defer ts.Close()
@@ -439,6 +445,7 @@ func TestDeleteResource(t *testing.T) {
 	}
 	// 优先级倒序
 	cases := []Case{
+		{cmdb.NewAppInstance(), "go-app--test--eh6hw", "test"},
 		{cmdb.NewAppDeployment(), "go-app", "test"},
 		{cmdb.NewOrchestration(), "test", ""},
 		{cmdb.NewResourceRange(), "test", "test"},

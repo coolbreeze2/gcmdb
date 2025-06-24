@@ -27,6 +27,7 @@ func TestApplyResource(t *testing.T) {
 		{"apply", "-f", "../example/files/resource_range.yaml"},
 		{"apply", "-f", "../example/files/orchestration.yaml"},
 		{"apply", "-f", "../example/files/appdeployment.yaml"},
+		{"apply", "-f", "../example/files/appinstance.yaml"},
 	}
 
 	ts := testServer()

@@ -83,9 +83,10 @@ func renderDeployTemplateFunc() http.HandlerFunc {
 // 将 AppDeployment 引用的所有对象详情，合并至 AppDeployment 中
 func resolveAppDeploymentDetail(appdeploy *cmdb.AppDeployment, appdeployDict map[string]any) (map[string]any, error) {
 	var result map[string]any
+	appdeployDictDp := map[string]any{}
 	namespace := appdeploy.GetMeta().Namespace
 	refs := runtime.GetFieldValueByTag(reflect.ValueOf(appdeploy), "", "reference")
-	appdeployDictDp := runtime.DeepCopyMap(appdeployDict)
+	maps.Copy(appdeployDictDp, appdeployDict)
 	for _, ref := range refs {
 		if ref.FieldValue != "" {
 			if !strings.HasSuffix(ref.FieldPath, ".name") {
@@ -130,7 +131,6 @@ func resolveAppDeployment(name, namespace string, params map[string]any) (*cmdb.
 	var err error
 	var appDeploy, resourceRange cmdb.Object
 	var appdeployDict,
-		appdeployDetailDict,
 		resourceRangeDict,
 		appdeployRenderDetailDict,
 		appDeployRenderedDict,
@@ -157,7 +157,8 @@ func resolveAppDeployment(name, namespace string, params map[string]any) (*cmdb.
 	if err = conversion.StructToMap(resourceRange, &resourceRangeDict); err != nil {
 		return nil, err
 	}
-	appdeployDetailDict = runtime.DeepCopyMap(appdeployDict)
+	appdeployDetailDict := map[string]any{}
+	maps.Copy(appdeployDetailDict, appdeployDict)
 	// 将 ResourceRange 的 spec 合并至 AppDeployment.spec.template.spec
 	runtime.RecSetItem(
 		appdeployDetailDict,
@@ -220,7 +221,7 @@ func resolveAppDeployment(name, namespace string, params map[string]any) (*cmdb.
 	return appDeploy.(*cmdb.AppDeployment), err
 }
 
-// TODO: 获取渲染后的 DeployTemplate
+// 获取渲染后的 DeployTemplate
 func resolveDeployTemplate(name, namespace string, params map[string]any) (*cmdb.DeployTemplate, error) {
 	var appDeploy *cmdb.AppDeployment
 	var deployTpl cmdb.Object

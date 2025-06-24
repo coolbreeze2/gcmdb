@@ -115,35 +115,6 @@ func RecSetItem(obj map[string]any, path string, value any) {
 	}
 }
 
-// DeepCopyMap 递归地对 map[string]any 做深拷贝
-func DeepCopyMap(src map[string]any) map[string]any {
-	if src == nil {
-		return nil
-	}
-	dst := make(map[string]any, len(src))
-	for k, v := range src {
-		dst[k] = deepCopyValue(v)
-	}
-	return dst
-}
-
-// 辅助函数，递归复制各种可能的类型
-func deepCopyValue(value any) any {
-	switch v := value.(type) {
-	case map[string]any:
-		return DeepCopyMap(v)
-	case []any:
-		newSlice := make([]any, len(v))
-		for i, elem := range v {
-			newSlice[i] = deepCopyValue(elem)
-		}
-		return newSlice
-	default:
-		// 基础类型，直接返回（因为它们是值类型）
-		return v
-	}
-}
-
 func Merge2Dict(current, target map[string]any, path []string) map[string]any {
 	if path == nil {
 		path = []string{}

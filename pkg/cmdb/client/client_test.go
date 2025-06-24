@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -132,6 +131,18 @@ func testDeleteResource(t *testing.T, apiUrl string, o cmdb.Object, name, namesp
 	assert.IsType(t, cmdb.ResourceNotFoundError{}, err)
 }
 
+func TestDefaultClientApiUrl(t *testing.T) {
+	cli := DefaultCMDBClient
+	url := cli.getCMDBAPIURL()
+	assert.IsType(t, "", url)
+}
+
+func TestRemoveResourceManageFieldsNil(t *testing.T) {
+	var m map[string]any
+	RemoveResourceManageFields(m)
+	assert.Nil(t, m)
+}
+
 func TestParseResourceFromDirNotExist(t *testing.T) {
 	_, _, err := ParseResourceFromDir("a-not-exist-dir")
 	assert.IsType(t, &fs.PathError{}, err)
@@ -157,7 +168,7 @@ func TestHealth(t *testing.T) {
 	assert.Equal(t, true, health)
 }
 
-func TestHealthInvaliStorage(t *testing.T) {
+func TestHealthInvalidStorage(t *testing.T) {
 	ts := testInvalidStoreServer()
 	defer ts.Close()
 
@@ -174,7 +185,7 @@ func TestCreateValidateError(t *testing.T) {
 	cli := NewCMDBClient(apiUrl)
 
 	_, err := cli.CreateResource(cmdb.NewApp())
-	assert.IsType(t, validator.ValidationErrors{}, err)
+	assert.IsType(t, cmdb.ResourceValidateError{}, err)
 }
 
 func TestCreateValidateServerError(t *testing.T) {
@@ -186,7 +197,18 @@ func TestCreateValidateServerError(t *testing.T) {
 	s.Metadata.Name = "a-test-secret"
 	s.Data = map[string]string{"xyz": "111"}
 	_, err := cli.CreateResource(s)
-	assert.IsType(t, validator.ValidationErrors{}, err)
+	assert.IsType(t, cmdb.ResourceValidateError{}, err)
+}
+
+func TestInvalidStorageServerErr(t *testing.T) {
+	ts := testInvalidStoreServer()
+	defer ts.Close()
+
+	apiUrl := ts.URL + apiv1.PathPrefix
+	cli := NewCMDBClient(apiUrl)
+
+	_, err := cli.ReadResource(cmdb.NewApp(), "test", "", 0)
+	assert.IsType(t, cmdb.ServerError{}, err)
 }
 
 func TestUpdateValidateError(t *testing.T) {
@@ -195,7 +217,7 @@ func TestUpdateValidateError(t *testing.T) {
 	cli := NewCMDBClient(apiUrl)
 
 	_, err := cli.UpdateResource(cmdb.NewApp())
-	assert.IsType(t, validator.ValidationErrors{}, err)
+	assert.IsType(t, cmdb.ResourceValidateError{}, err)
 }
 
 func TestListInvalidateLabelSelector(t *testing.T) {

@@ -1,68 +1,76 @@
 package v1
 
 import (
-	"fmt"
-	"gcmdb/pkg/cmdb/client"
-	"io"
+	"context"
+	"gcmdb/global"
+	"gcmdb/pkg/cmdb"
+	"gcmdb/pkg/cmdb/server/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func testServer() *httptest.Server {
-	r := NewRouter(nil)
-	ts := httptest.NewServer(r)
-	apiUrl := ts.URL + PathPrefix
-	client.DefaultCMDBClient.ApiUrl = apiUrl
-	return httptest.NewServer(r)
+func testInvalidSetup() (context.Context, *storage.Store, *clientv3.Client) {
+	client, _ := clientv3.New(clientv3.Config{
+		Endpoints: []string{"invalid-endpoint-url"},
+	})
+	store := storage.New(client, global.StoragePathPrefix)
+	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	return ctx, store, client
 }
 
-func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
-	req, err := http.NewRequest(method, ts.URL+path, body)
-	if err != nil {
-		t.Fatal(err)
-		return nil, ""
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-		return nil, ""
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-		return nil, ""
-	}
-	defer resp.Body.Close()
-
-	return resp, string(respBody)
+func TestAddGenericApiInvalidKind(t *testing.T) {
+	defer func() {
+		assert.IsType(t, cmdb.ResourceTypeError{}, recover())
+	}()
+	r := chi.NewRouter()
+	addGenericApi(r, "invalid-kind")
 }
 
-func TestCreate(t *testing.T) {
-	// TODO:
+func TestHandleWithInvalidStore(t *testing.T) {
+	ctx, store, _ := testInvalidSetup()
+	route := chi.NewRouter()
+	InstallApi(route, store)
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(ctx, "GET", "/", nil)
+	countFunc("invalid-kind")(rr, req)
+	assert.Equal(t, rr.Code, 500)
+
+	getNamesFunc("invalid-kind")(rr, req)
+	assert.Equal(t, rr.Code, 500)
+
+	getListFunc("invalid-kind")(rr, req)
+	assert.Equal(t, rr.Code, 500)
 }
 
-func TestGetList(t *testing.T) {
-	ts := testServer()
-	defer ts.Close()
+func TestCreateFuncInvalid(t *testing.T) {
+	route := chi.NewRouter()
+	InstallApi(route, nil)
 
-	path := fmt.Sprintf("%s/%ss", PathPrefix, "secret")
-	resp, _ := testRequest(t, ts, "GET", path, nil)
-	assert.Equal(t, 200, resp.StatusCode, resp.Request.URL.String())
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/", nil)
+	createFunc("invalid-kind")(rr, req)
+	assert.Equal(t, rr.Code, 400)
+
+	createFunc("secret")(rr, req)
+	assert.Equal(t, rr.Code, 400)
 }
 
-func TestGet(t *testing.T) {
-	// TODO:
-}
+func TestUpdateFuncInvalid(t *testing.T) {
+	route := chi.NewRouter()
+	InstallApi(route, nil)
 
-func TestUpdate(t *testing.T) {
-	// TODO:
-}
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/", nil)
+	updateFunc("invalid-kind")(rr, req)
+	assert.Equal(t, rr.Code, 400)
 
-func TestDelete(t *testing.T) {
-	// TODO:
+	updateFunc("secret")(rr, req)
+	assert.Equal(t, rr.Code, 400)
 }

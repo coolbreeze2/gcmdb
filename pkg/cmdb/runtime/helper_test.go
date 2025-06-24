@@ -267,3 +267,7 @@ func TestMerge2Dict_DeepNested(t *testing.T) {
 		t.Errorf("expected %v, got %v", want, got)
 	}
 }
+
+func TestIsAllowedType(t *testing.T) {
+	assert.Equal(t, isAllowedType(map[string]string{}), false)
+}

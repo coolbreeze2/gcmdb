@@ -8,6 +8,7 @@ import (
 
 func TestDiffResource(t *testing.T) {
 	cases := [][]string{
+		{"diff", "-f", "../example/files"},
 		{"apply", "-f", "../example/files"},
 		{"diff", "-f", "../example/files"},
 		{"diff", "-f", "../example/files/secret.yaml"},

@@ -278,13 +278,11 @@ func handleStorageErr(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func newStorage() *storage.Store {
+	var client *clientv3.Client
+	var err error
 	endpoint := global.ServerSetting.ETCD_SERVER_HOST + ":" + global.ServerSetting.ETCD_SERVER_PORT
-	client, err := clientv3.New(clientv3.Config{
-		Endpoints: []string{endpoint},
-	})
-	if err != nil {
+	if client, err = clientv3.New(clientv3.Config{Endpoints: []string{endpoint}}); err != nil {
 		panic(err)
 	}
-	store := storage.New(client, global.StoragePathPrefix)
-	return store
+	return storage.New(client, global.StoragePathPrefix)
 }

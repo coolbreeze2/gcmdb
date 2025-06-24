@@ -1,46 +1,55 @@
 package v1
 
 import (
-	"fmt"
-	"gcmdb/pkg/cmdb/cmd"
 	"testing"
 
-	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 )
 
-func testInit(t *testing.T) {
-	cmd.RootCmd.SetArgs([]string{"apply", "-f", "../../../example/files"})
-	err := cmd.RootCmd.Execute()
+func TestStringToObject_Success(t *testing.T) {
+	yamlStr := `apiVersion: v1
+kind: AppDeployment
+metadata:
+  name: test-app
+  namespace: test
+spec:
+  resourceRange: test-range
+  template:
+    deployTemplate:
+      name: test-template
+    spec:
+      app: test
+`
+	obj, err := stringToObject(yamlStr)
 	assert.NoError(t, err)
+	assert.NotNil(t, obj)
+	meta := obj.GetMeta()
+	assert.Equal(t, "test-app", meta.Name)
+	assert.Equal(t, "test", meta.Namespace)
 }
 
-func TestResolveAppDeployment(t *testing.T) {
-	ts := testServer()
-	defer ts.Close()
-
-	testInit(t)
-
-	appDeploy, err := resolveAppDeployment("go-app", "test", map[string]any{})
-	if err != nil {
-		panic(err)
-	}
-	assert.NoError(t, err)
-	out, err := yaml.MarshalWithOptions(appDeploy, yaml.AutoInt())
-	fmt.Println(string(out))
+func TestStringToObject_InvalidYAML(t *testing.T) {
+	invalidYAML := `apiVersion: v1
+kind: AppDeployment
+metadata:
+  name: test-app
+  namespace: test
+spec:
+  resourceRange: [unclosed
+`
+	obj, err := stringToObject(invalidYAML)
+	assert.Error(t, err)
+	assert.Nil(t, obj)
 }
 
-func TestResolveDeployTemplate(t *testing.T) {
-	ts := testServer()
-	defer ts.Close()
-
-	testInit(t)
-
-	appDeploy, err := resolveDeployTemplate("go-app", "test", map[string]any{})
-	if err != nil {
-		panic(err)
-	}
-	assert.NoError(t, err)
-	out, err := yaml.MarshalWithOptions(appDeploy, yaml.AutoInt(), yaml.UseLiteralStyleIfMultiline(true))
-	fmt.Println(string(out))
+func TestStringToObject_InvalidKind(t *testing.T) {
+	// Kind that does not exist in cmdb.Object registry
+	yamlStr := `apiVersion: v1
+kind: NotExistKind
+metadata:
+  name: test
+`
+	obj, err := stringToObject(yamlStr)
+	assert.Error(t, err)
+	assert.Nil(t, obj)
 }

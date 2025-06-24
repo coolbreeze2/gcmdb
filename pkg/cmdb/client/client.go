@@ -37,10 +37,6 @@ func (c CMDBClient) CreateResource(r cmdb.Object) (map[string]any, error) {
 	url := c.getCreateResourceUrl(r)
 	RemoveResourceManageFields(resource)
 
-	if err = runtime.ValidateObject(r); err != nil {
-		return nil, err
-	}
-
 	resp, err = req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 
 	return result, c.fmtError(r, resp, err)
@@ -57,10 +53,6 @@ func (c CMDBClient) UpdateResource(r cmdb.Object) (map[string]any, error) {
 
 	url := c.getURDResourceUrl(r, meta.Name, meta.Namespace)
 	RemoveResourceManageFields(resource)
-
-	if err = runtime.ValidateObject(r); err != nil {
-		return nil, err
-	}
 
 	resp, err = req.C().R().SetBody(resource).SetSuccessResult(&result).Post(url)
 

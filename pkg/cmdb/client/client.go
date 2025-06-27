@@ -5,6 +5,7 @@ import (
 	"gcmdb/global"
 	"gcmdb/pkg/cmdb"
 	"gcmdb/pkg/cmdb/conversion"
+	"gcmdb/pkg/cmdb/deployment"
 	"gcmdb/pkg/cmdb/runtime"
 	"os"
 	"path/filepath"
@@ -124,7 +125,7 @@ func (c CMDBClient) GetResourceNames(r cmdb.Object, namespace string) ([]string,
 	return names, c.fmtError(r, resp, err)
 }
 
-// TODO: 获取渲染后的AppDeployment
+// 获取渲染后的AppDeployment
 func (c CMDBClient) RenderAppDeployment(name, namespace string, params map[string]any) (map[string]any, error) {
 	path := fmt.Sprintf("/appdeployments/%s/%s/render", namespace, name)
 	var result map[string]any
@@ -134,7 +135,7 @@ func (c CMDBClient) RenderAppDeployment(name, namespace string, params map[strin
 	return result, c.fmtError(&cmdb.AppDeployment{}, resp, err)
 }
 
-// TODO: 获取渲染后的 AppDeployment 关联的 DeployTemplate
+// 获取渲染后的 AppDeployment 关联的 DeployTemplate
 func (c CMDBClient) RenderDeployTemplate(name, namespace string, params map[string]any) (map[string]any, error) {
 	path := fmt.Sprintf("/appdeployments/%s/%s/deploytemplate/render", namespace, name)
 	var result map[string]any
@@ -142,6 +143,16 @@ func (c CMDBClient) RenderDeployTemplate(name, namespace string, params map[stri
 	data := map[string]any{"params": map[string]any{}}
 	resp, err := req.C().R().SetBody(data).SetSuccessResult(&result).SetErrorResult(&result).Post(url)
 	return result, c.fmtError(&cmdb.DeployTemplate{}, resp, err)
+}
+
+// 运行 AppDeployment 部署
+func (c CMDBClient) RunAppDeployment(action deployment.DeployAction, name, namespace string, params map[string]any) (map[string]any, error) {
+	path := fmt.Sprintf("/appdeployments/%s/%s/run/%s", namespace, name, action)
+	var result map[string]any
+	url := c.getCMDBAPIURL() + path
+	data := map[string]any{"params": map[string]any{}}
+	resp, err := req.C().R().SetBody(data).SetSuccessResult(&result).SetErrorResult(&result).Post(url)
+	return result, c.fmtError(&cmdb.AppDeployment{}, resp, err)
 }
 
 // 格式化错误信息

@@ -1,87 +1,21 @@
-package v1
+package deployment
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"gcmdb/pkg/cmdb"
 	"gcmdb/pkg/cmdb/conversion"
 	"gcmdb/pkg/cmdb/runtime"
 	"gcmdb/pkg/cmdb/server/storage"
 	"maps"
-	"net/http"
 	"reflect"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/goccy/go-yaml"
 )
 
-type RenderParams struct {
-	Params map[string]any `json:"params"`
-}
-
-// TODO: run appdeployment
-// TODO: read appdeployment status
-// TODO: read logs
-// TODO: list appdeployment image tags
-
-func addAppRenderApi(r *chi.Mux) {
-	r.Post(
-		fmt.Sprintf("%s/appdeployments/{namespace}/{name}/render", PathPrefix),
-		renderAppDeploymentFunc(),
-	)
-	r.Post(
-		fmt.Sprintf("%s/appdeployments/{namespace}/{name}/deploytemplate/render", PathPrefix),
-		renderDeployTemplateFunc(),
-	)
-}
-
-// render appdeployment
-func renderAppDeploymentFunc() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		name := chi.URLParam(r, "name")
-		namespace := chi.URLParam(r, "namespace")
-		var params RenderParams
-		if err = render.Decode(r, &params); err != nil {
-			render.Render(w, r, ErrInvalidRequest(err))
-			return
-		}
-		var appDeploy *cmdb.AppDeployment
-		if appDeploy, err = resolveAppDeployment(name, namespace, params.Params); err != nil {
-			handleStorageErr(w, r, err)
-			return
-		}
-		render.Status(r, http.StatusOK)
-		render.Respond(w, r, appDeploy)
-	}
-}
-
-// render deploytemplate
-func renderDeployTemplateFunc() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		name := chi.URLParam(r, "name")
-		namespace := chi.URLParam(r, "namespace")
-		var params RenderParams
-		if err = render.Decode(r, &params); err != nil {
-			render.Render(w, r, ErrInvalidRequest(err))
-			return
-		}
-		var appDeploy *cmdb.DeployTemplate
-		if appDeploy, err = resolveDeployTemplate(name, namespace, params.Params); err != nil {
-			handleStorageErr(w, r, err)
-			return
-		}
-		render.Status(r, http.StatusOK)
-		render.Respond(w, r, appDeploy)
-	}
-}
-
 // 将 AppDeployment 引用的所有对象详情，合并至 AppDeployment 中
-func resolveAppDeploymentDetail(appdeploy *cmdb.AppDeployment, appdeployDict map[string]any) (map[string]any, error) {
+func resolveAppDeploymentDetail(db *storage.Store, appdeploy *cmdb.AppDeployment, appdeployDict map[string]any) (map[string]any, error) {
 	var result map[string]any
 	appdeployDictDp := map[string]any{}
 	namespace := appdeploy.GetMeta().Namespace
@@ -126,7 +60,7 @@ func resolveAppDeploymentDetail(appdeploy *cmdb.AppDeployment, appdeployDict map
 }
 
 // 将 resourceRange 与 AppDeployment 合并，获取渲染后的 AppDeployment
-func resolveAppDeployment(name, namespace string, params map[string]any) (*cmdb.AppDeployment, error) {
+func ResolveAppDeployment(db *storage.Store, name, namespace string, params map[string]any) (*cmdb.AppDeployment, error) {
 	// TODO: go-yaml 对于数组空元素存在 bug: https://github.com/goccy/go-yaml/issues/766
 	var err error
 	var appDeploy, resourceRange cmdb.Object
@@ -191,7 +125,7 @@ func resolveAppDeployment(name, namespace string, params map[string]any) (*cmdb.
 	if appDeployYaml, err = yaml.MarshalWithOptions(appdeployDetailDict, yaml.AutoInt()); err != nil {
 		return nil, err
 	}
-	if appdeployDetailSpec, err = resolveAppDeploymentDetail(appDeploy.(*cmdb.AppDeployment), appdeployDetailDict); err != nil {
+	if appdeployDetailSpec, err = resolveAppDeploymentDetail(db, appDeploy.(*cmdb.AppDeployment), appdeployDetailDict); err != nil {
 		return nil, err
 	}
 	appdeployDetailDict["spec"].(map[string]any)["template"].(map[string]any)["spec"] = appdeployDetailSpec
@@ -222,14 +156,14 @@ func resolveAppDeployment(name, namespace string, params map[string]any) (*cmdb.
 }
 
 // 获取渲染后的 DeployTemplate
-func resolveDeployTemplate(name, namespace string, params map[string]any) (*cmdb.DeployTemplate, error) {
+func ResolveDeployTemplate(db *storage.Store, name, namespace string, params map[string]any) (*cmdb.DeployTemplate, error) {
 	var appDeploy *cmdb.AppDeployment
 	var deployTpl cmdb.Object
 	var hostNodes []cmdb.Object
 	var deployTplBytes []byte
 	var deployTplRedered, deployTplDeployArgs string
 	var err error
-	if appDeploy, err = resolveAppDeployment(name, namespace, params); err != nil {
+	if appDeploy, err = ResolveAppDeployment(db, name, namespace, params); err != nil {
 		return nil, err
 	}
 	if appDeploy.Spec.Template.Spec.DeployPlatform.Docker != nil {
@@ -238,7 +172,16 @@ func resolveDeployTemplate(name, namespace string, params map[string]any) (*cmdb
 		if err = db.GetList(context.Background(), "HostNode", "", listOps, &hostNodes); err != nil {
 			return nil, err
 		}
-		params["host_nodes"] = hostNodes
+		var hostNodesArray []map[string]any
+		for _, h := range hostNodes {
+			var hostNodesMap map[string]any
+			if err = conversion.StructToMap(h, &hostNodesMap); err != nil {
+				return nil, err
+			}
+			hostNodesArray = append(hostNodesArray, hostNodesMap)
+		}
+
+		params["host_nodes"] = hostNodesArray
 	}
 	deployTplName := appDeploy.Spec.Template.DeployTemplate.Name
 	if err = db.Get(context.Background(), "DeployTemplate", deployTplName, namespace, storage.GetOptions{}, &deployTpl); err != nil {
@@ -250,7 +193,9 @@ func resolveDeployTemplate(name, namespace string, params map[string]any) (*cmdb
 	}
 	values := appDeploy.Spec.Template.DeployTemplate.Values
 	maps.Copy(params, values)
-	deployTplRedered, err = runtime.RenderTemplate(string(deployTplBytes), params)
+	deployTplStr := string(deployTplBytes)
+	// fmt.Printf("deployTplStr: %s", deployTplStr)
+	deployTplRedered, err = runtime.RenderTemplate(deployTplStr, params)
 	deployArgs := map[string]any{}
 	for k, v := range appDeploy.Spec.Template.DeployTemplate.DeployArgs {
 		deployArgs[k] = v
@@ -267,14 +212,20 @@ func resolveDeployTemplate(name, namespace string, params map[string]any) (*cmdb
 
 func stringToObject(objStr string) (cmdb.Object, error) {
 	var err error
-	var mapObj map[string]any
-	var bytsObj []byte
-	var obj cmdb.Object
-	if err = yaml.UnmarshalWithOptions([]byte(objStr), &mapObj); err != nil {
+	var objMap map[string]any
+	if err = yaml.UnmarshalWithOptions([]byte(objStr), &objMap); err != nil {
 		return nil, err
 	}
 
-	if bytsObj, err = json.Marshal(mapObj); err != nil {
+	return mapToObject(objMap)
+}
+
+func mapToObject(objMap map[string]any) (cmdb.Object, error) {
+	var err error
+	var bytsObj []byte
+	var obj cmdb.Object
+
+	if bytsObj, err = json.Marshal(objMap); err != nil {
 		return nil, err
 	}
 	if obj, err = conversion.DecodeObject(bytsObj); err != nil {

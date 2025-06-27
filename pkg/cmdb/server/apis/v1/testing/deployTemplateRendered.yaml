@@ -1,0 +1,119 @@
+apiVersion: v1alpha
+kind: DeployTemplate
+metadata:
+  annotations: {}
+  create_revision: 106242
+  creationTimestamp: "2025-06-26T16:22:00.8855722+08:00"
+  labels: {}
+  managedFields:
+    manager: cmctl
+    operation: Updated
+    time: "2025-06-26T16:22:00.8855722+08:00"
+  name: docker-compose-test
+  namespace: test
+  revision: 106242
+  version: 1
+spec:
+  command:
+  - docker-compose
+  deployArgs: |
+
+    --file docker-compose.yml
+    up -d --wait --timeout 120
+data:
+  values.yml: |-
+
+    containerCommand:
+    - "/bin/sh"
+    - "-c"
+    - "cd /opt/ansible && ansible-playbook --diff -v --ssh-common-args='-o StrictHostKeyChecking=no' -i inventory.yaml java-backend.yaml"
+    image:
+      registry: harbor.dev.com
+      repository: devops/ansible-app-deploy
+      tag: dev-0.0.1
+    containerEnv:
+    - name: ALIBABA_CLOUD_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          key: ALIBABA_CLOUD_ACCESS_KEY_ID
+          name: aliyun-ak
+    - name: ALIBABA_CLOUD_ACCESS_KEY_SECRET
+      valueFrom:
+        secretKeyRef:
+          key: ALIBABA_CLOUD_ACCESS_KEY_SECRET
+          name: aliyun-ak
+    podLabels:
+      app.cmdb/instance:
+    extraVolumeMounts:
+    - name: localtime
+      mountPath: /etc/localtime
+    - name: id-rsa
+      mountPath: /root/.ssh/id_rsa
+      subPath: id_rsa
+    - name: data
+      mountPath: /opt/ansible/inventory.yaml
+      subPath: inventory.yaml
+    volumesConfigMapItems:
+    - key: inventory.yaml
+      path: inventory.yaml
+    configMapData:
+      inventory.yaml: |
+        app:
+          hosts:
+            test:
+              ansible_host: 10.10.204.185
+              ansible_user: root
+          vars:
+            docker_compose_type: python
+            docker_compose_path: /usr/local/bin/docker-compose
+            app: go-app
+            container_name: go-app_test
+            port: 8000
+            health_path: actuator/health
+            command:
+              - python
+
+            args:
+              - autoapp.py
+              - test
+
+            env:
+              EMPTY_ARG: ""
+              ENV: test
+              GC_LOG: -Xloggc:/mnt/logs/go-app/go-app-gc-$DATETIME.log
+              JAVA_OPTS: ""
+              PORT: "8000"
+              PRE_START_SLEEP_TIME: "0"
+              PRE_STOP_SLEEP_TIME: "0"
+              STARTUP_TIME: "10"
+              ZONE: A
+
+            healthcheck:
+              interval: 5s
+              retries: 10
+              start_period: 10s
+              test:
+              - CMD
+              - curl
+              - -f
+              - http://localhost:8000/actuator/health
+              timeout: 1s
+
+            image_registry: harbor.dev.com
+            image: harbor.dev.com/go-devops/go-app:ali-test
+            user: root
+            volumes:
+              - /mnt/jars:/opt/java-packages
+              - /mnt/logs:/mnt/logs
+              - /etc/localtime:/etc/localtime:ro
+
+            minio_url: http://minio-data.dev.com
+            docker_username: readonly
+            docker_password: cmVhZG9ubHk6cmVhZG9ubHkxMjMK
+            eureka_url: http://eureka-url:8761
+            app_down_secret: down-secret
+            only_restart: False
+            host_restart: False
+            ecs_restart: False
+            ecs_instance_ids:
+              - 10.10.204.185

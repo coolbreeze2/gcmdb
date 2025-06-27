@@ -49,13 +49,12 @@ data:
       inventory.yaml: |
         app:
           hosts:
-        {%- if hostnode is defined -%}
-        {% set host_nodes = host_nodes | selectattr('metadata.name', 'in', hostnode) | list %}
-        {%- endif -%}
         {%- for host_node in host_nodes %}
+        {%- if hostnode is not defined or host_node.metadata.name in hostnode %}
             ${ host_node.metadata.name }:
               ansible_host: ${ host_node.spec.ip }
               ansible_user: root
+        {%- endif -%}
         {%- endfor %}
           vars:
             docker_compose_type: python
@@ -85,4 +84,9 @@ data:
             only_restart: ${ only_restart | default(false) }
             host_restart: ${ host_restart | default(false) }
             ecs_restart: ${ ecs_restart | default(false) }
-            ecs_instance_ids: ${ host_nodes | map(attribute='spec.id') | list }
+            ecs_instance_ids:
+            {%- for host_node in host_nodes %}
+            {%- if hostnode is not defined or host_node.metadata.name in hostnode %}
+              - ${ host_node.spec.ip }
+            {%- endif -%}
+            {%- endfor -%}

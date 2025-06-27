@@ -1,12 +1,14 @@
 package client
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"gcmdb/global"
 	"gcmdb/pkg/cmdb"
 	"gcmdb/pkg/cmdb/conversion"
+	"gcmdb/pkg/cmdb/deployment"
 	apiv1 "gcmdb/pkg/cmdb/server/apis/v1"
 	"gcmdb/pkg/cmdb/server/storage"
 	"io/fs"
@@ -18,6 +20,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
+
+func clearDb() {
+	endpoint := global.ServerSetting.ETCD_SERVER_HOST + ":" + global.ServerSetting.ETCD_SERVER_PORT
+	client, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{endpoint},
+	})
+	if err != nil {
+		panic(err)
+	}
+	ctx := context.Background()
+	client.KV.Delete(ctx, "", clientv3.WithPrefix())
+}
 
 func testServer() (*httptest.Server, string) {
 	r := apiv1.NewRouter(nil)
@@ -495,6 +509,22 @@ func TestRenderDeployTemplate(t *testing.T) {
 	params := map[string]any{}
 	cli := NewCMDBClient(apiUrl)
 	result, err := cli.RenderDeployTemplate(name, namespace, params)
+	assert.NoError(t, err)
+	out, _ := yaml.MarshalWithOptions(result, yaml.AutoInt(), yaml.UseLiteralStyleIfMultiline(true))
+	fmt.Println(string(out))
+}
+
+func TestRunAppDeployment(t *testing.T) {
+	defer clearDb()
+	TestCreateResource(t)
+	ts, apiUrl := testServer()
+	defer ts.Close()
+
+	namespace := "test"
+	name := "go-app"
+	params := map[string]any{}
+	cli := NewCMDBClient(apiUrl)
+	result, err := cli.RunAppDeployment(deployment.DeployRelease, name, namespace, params)
 	assert.NoError(t, err)
 	out, _ := yaml.MarshalWithOptions(result, yaml.AutoInt(), yaml.UseLiteralStyleIfMultiline(true))
 	fmt.Println(string(out))

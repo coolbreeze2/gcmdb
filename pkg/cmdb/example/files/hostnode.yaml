@@ -3,9 +3,9 @@ kind: HostNode
 metadata:
   annotations: {}
   labels:
-    app: dev-app
+    app: go-app
     namespace: test
-    project: devops
+    project: go-devops
   name: test
 status:
   phase: running
